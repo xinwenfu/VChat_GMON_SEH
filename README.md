@@ -6,7 +6,7 @@ ___
 Not all buffer overflows will be capable of overflowing the return address to modify the `eip` register in order to gain control of the flow of execution. So how do we account for this? When exploiting a Windows system we can use the [Structured Exception Handling](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170) (SEH) feature provided that allows for languages like C to have a common exception handling paradigm, the try-catch-finally block.
 
 ## SEH
-SEH is used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a systemcall due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers that can process an exception before it reaches the default handler. We can define a basic set of handler by using the try-catch-finally block as shown below.
+SEH is used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a systemcall due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers that can process an exception before it reaches the default handler. This entire process is thread sepecific, so it is possible for multiple threads within the same process to have differnt SEH changes to handle those exceptions unique to each executing thread. We can define a basic set of handler by using the try-catch-finally block as shown below.
 
 ```
 int main()
@@ -376,33 +376,41 @@ Now that we have all the necessary parts for the creation of a exploit we will a
 
 ## VChat Code
 
-GMON Code
-```
-else if (strncmp(RecvBuf, "GMON ", 5) == 0) {
-	char GmonStatus[13] = "GMON STARTED\n";
-	for (i = 5; i < RecvBufLen; i++) {
-		if ((char)RecvBuf[i] == '/') {
-			if (strlen(RecvBuf) > 3950) {
-				Function3(RecvBuf);
-			}
-			break;
+In the ```DWORD WINAPI ConnectionHandler(LPVOID CSocket)``` function which handles all connections made the the VChat server, the **GMON** case has the following structure:
+```c
+char GmonStatus[13] = "GMON STARTED\n";
+for (i = 5; i < RecvBufLen; i++) {
+	if ((char)RecvBuf[i] == '/') {
+		if (strlen(RecvBuf) > 3950) {
+			Function3(RecvBuf);
 		}
+		break;
 	}
-SendResult = send(Client, GmonStatus, sizeof(GmonStatus), 0);
 }
+SendResult = send(Client, GmonStatus, sizeof(GmonStatus), 0);
 ```
+1) Declare an array `GmonStatus` that has space for twelve charicters and one null terminator.
+2) Check each charicter in the user input `RecvBuf` for a `/`, if one exists and the length of the string recived is greater than 3950 we will make a call to `Function3`, otherwise we break out of the for loop.
+	* Since we pass the `RecvBuff` directly unlike in [`GTER`](https://github.com/DaintyJet/VChat_GTER_EggHunter) which limits the buffer passed to 180 and [`TRUN`](https://github.com/DaintyJet/VChat_TURN) which limits the buffer passed to 300	in `GMON` the buffer is limited by the size of the `RecvBuf` which is 4096.
+3) Send a result back to the client, either after finding a `/` in `RecvBuf` or scanning through it's entrirety  
+
 
 Function3 code:
-```
+```c
 void Function3(char* Input) {
 	char Buffer2S[2000];
 	strcpy(Buffer2S, Input);
 }
 ```
+1) Declare an arry of size 2000
+2) Copy the contents of `Input` which is `RecvBuf` into the array `Buffer2S`	
+	* The `Input` array can hold up to 4096 charicters, this is slightly over two times as much as what `Buffer2S` can hold.
+	* This is using `strcpy` which is bounded by the location of the null terminator `\0` in the source string. This means we are not bounded by the size of the destination string 
+	* During this copy an exception occurs in the program when the source `Input` is of sufficent size, this prevents us from overwriting the `EIP` register directly. However as the SEH chain is stored on the stack, we are able to control the EIP through the SEH addresses.
 
 ## Test code
-1. [exploit0.py](./SourceCode/exploit0.py)
-2. [exploit1.py](./SourceCode/exploit1.py) : Sending a cyclic pattern of chars to identify the offset that we need to inject to control EIP.
+1. [exploit0.py](./SourceCode/exploit0.py): Inital overflow to find 
+2. [exploit1.py](./SourceCode/exploit1.py): Sending a cyclic pattern of chars to identify the offset that we need to inject to control EIP.
 3. [exploit2.py](./SourceCode/exploit2.py): Verify location of the SEH Handle 
 4. [exploit3.py](./SourceCode/exploit3.py): Jumping to *POP EAX, POPEDX, RTEN* 
 4. [exploit4.py](./SourceCode/exploit4.py): Adding *JMP SHORT* 
