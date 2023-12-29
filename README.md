@@ -6,7 +6,7 @@ ___
 Not all buffer overflows will be capable of overflowing the return address to modify the `eip` register in order to gain control of the flow of execution. So how do we account for this? When exploiting a Windows system we can use the [Structured Exception Handling](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170) (SEH) feature provided that allows for languages like C to have a common exception handling paradigm, the try-catch-finally block.
 
 ## SEH
-SEH is used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a systemcall due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers that can process an exception before it reaches the default handler. This entire process is thread sepecific, so it is possible for multiple threads within the same process to have differnt SEH changes to handle those exceptions unique to each executing thread. We can define a basic set of handler by using the try-catch-finally block as shown below.
+SEH is used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a systemcall due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers that can process an exception before it reaches the default handler. This entire process is thread specific, so it is possible for multiple threads within the same process to have different SEH changes to handle those exceptions unique to each executing thread. We can define a basic set of handler by using the try-catch-finally block as shown below.
 
 ```
 int main()
@@ -92,16 +92,16 @@ The following sections cover the process that should (Or may) be followed when p
    * Exit with ```CTL+]```
    * An example is shown below
 
-		![Telent](Images/Telnet.png)
+		![Telnet](Images/Telnet.png)
 
 4. **Linux**: We can try a few inputs to the *GMON* command, and see if we can get any information. Simply type *GMON* followed by some additional input as shown below
 
-	![Telent](Images/Telnet2.png)
+	![Telnet](Images/Telnet2.png)
 
-	* Now, trying every possible combinations of strings would get quite tiresome, so we can use the technique of *fuzzing* to automate this process as discused later in the exploitation section.
+	* Now, trying every possible combinations of strings would get quite tiresome, so we can use the technique of *fuzzing* to automate this process as discussed later in the exploitation section.
 
 ### Dynamic Analysis 
-If you dissabled exceptions for the [EggHunting](https://github.com/DaintyJet/VChat_GTER_EggHunter) exploit, that is we passed all exceptions through the debugger to the VChat process. You should uncheck the options so Immunity Debugger can catch the exceptions allowing us to see the state of the program at a crash.  See step 2 of the [Launch VChat](#launch-vchat) section!
+If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VChat_GTER_EggHunter) exploit, that is we passed all exceptions through the debugger to the VChat process. You should uncheck the options so Immunity Debugger can catch the exceptions allowing us to see the state of the program at a crash.  See step 2 of the [Launch VChat](#launch-vchat) section!
 #### Launch VChat
 1. Open Immunity Debugger
 
@@ -116,7 +116,7 @@ If you dissabled exceptions for the [EggHunting](https://github.com/DaintyJet/VC
 
 	   <img src="Images/I1c.png" width = 200>
 
-   2. Open the Exception Options, if nothing is showing select any other tab and then re-seslect Exceptions 
+   2. Open the Exception Options, if nothing is showing select any other tab and then re-select Exceptions 
 
 	   <img src="Images/I1d.png" width = 200>
 
@@ -157,7 +157,7 @@ If you dissabled exceptions for the [EggHunting](https://github.com/DaintyJet/VC
 
    <img src="Images/S1.png" width=800> 
 
-   * This infomration is discovered by looking the the Processes Thread Enviornment Block (TEB).  
+   * This information is discovered by looking the the Processes Thread Environment Block (TEB).  
 
 3. Examine the SEH chain of the program
 
@@ -166,7 +166,7 @@ If you dissabled exceptions for the [EggHunting](https://github.com/DaintyJet/VC
    * We can see there are two entries, we may want to keep an eye on these as we Fuzz the VChat server!
 
 #### Fuzzing 
-SPIKE is a C based fuzzing tool that is commonly used by professionals, it is available in the [kali linux](https://www.kali.org/tools/spike/) and other [pen-testing platforms](https://www.blackarch.org/fuzzer.html) repositories. We should note that the original refernce page appears to have been taken over by a slot machine site at the time of this writing, so you should refer to the [original writeup](http://thegreycorner.com/2010/12/25/introduction-to-fuzzing-using-spike-to.html) of the SPIKE tool by vulnserver's author [Stephen Bradshaw](http://thegreycorner.com/) in addition to [other resources](https://samsclass.info/127/proj/p18-spike.htm) for guidance. The source code is still available on [GitHub](https://github.com/guilhermeferreira/spikepp/) and still maintained on [GitLab](https://gitlab.com/kalilinux/packages/spike).
+SPIKE is a C based fuzzing tool that is commonly used by professionals, it is available in the [kali linux](https://www.kali.org/tools/spike/) and other [pen-testing platforms](https://www.blackarch.org/fuzzer.html) repositories. We should note that the original reference page appears to have been taken over by a slot machine site at the time of this writing, so you should refer to the [original writeup](http://thegreycorner.com/2010/12/25/introduction-to-fuzzing-using-spike-to.html) of the SPIKE tool by vulnserver's author [Stephen Bradshaw](http://thegreycorner.com/) in addition to [other resources](https://samsclass.info/127/proj/p18-spike.htm) for guidance. The source code is still available on [GitHub](https://github.com/guilhermeferreira/spikepp/) and still maintained on [GitLab](https://gitlab.com/kalilinux/packages/spike).
 
 1. Open a terminal on the **Kali Linux Machine**
 2. Create a file ```GTER.spk``` file with your favorite text editor. We will be using a SPIKE script and interpreter rather than writing out own C based fuzzer. We will be using the [mousepad](https://github.com/codebrainz/mousepad) text editor.
@@ -235,7 +235,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I9.png" width=600> 
 
-3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can see in this case the SEH record's hander was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on out search strings position in the pattern. 
+3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can see in this case the SEH record's handler was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on out search strings position in the pattern. 
 	```
 	$ /usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -q 386D4537
 	```
@@ -297,7 +297,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 		<img src="Images/I20.png" width=600>
 
-8. Notice where we have jumped to? This is slightly off as we jumped to the the address in the first hald of the SEH record
+8. Notice where we have jumped to? This is slightly off as we jumped to the the address in the first half of the SEH record
 
 	<img src="Images/I21.png" width=600>
 
@@ -309,7 +309,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I22.png" width=600>
 
-10. Copy the output from the `nasm_shell.rb` (`EB08`) into the [exploit4.py](./SourceCode/exploit4.py) exploit script. We use the NOP instructions to overwrite the SEH handlers address This allows us to differentiate it from the `A`s, however this could simple be repalced with `A`s . <!--(Makes it stand out?)-->
+10. Copy the output from the `nasm_shell.rb` (`EB08`) into the [exploit4.py](./SourceCode/exploit4.py) exploit script. We use the NOP instructions to overwrite the SEH handlers address This allows us to differentiate it from the `A`s, however this could simple be replaced with `A`s . <!--(Makes it stand out?)-->
 11. Run the program with the breakpoint set and observe it's outcome. We can see the Short Jump!
 
 	<img src="Images/I23.png" width=600>
@@ -331,7 +331,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 13. Modify the [exploit5.py] exploit script to have your new long `jmp` instruction, set a breakpoint at the `pop/pop/ret` SEH gadget and observe it's behavior!
 
-   1. Ovserve the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
+   1. Observe the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
 
 	   <img src="Images/I27.png" width=600>
 
@@ -360,7 +360,7 @@ Now that we have all the necessary parts for the creation of a exploit we will a
 
 2. Create the byte array representing the shellcode as done in [exploit6.py](./SourceCode/exploit6.py). Remember this should be placed at the start of the buffer!
 3. Now lets see how the program reacts!
-   1. Ovserve the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
+   1. Observe the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
 
 	   <img src="Images/I27.png" width=600>
 
@@ -395,10 +395,10 @@ for (i = 5; i < RecvBufLen; i++) {
 }
 SendResult = send(Client, GmonStatus, sizeof(GmonStatus), 0);
 ```
-1) Declare an array `GmonStatus` that has space for twelve charicters and one null terminator.
-2) Check each charicter in the user input `RecvBuf` for a `/`, if one exists and the length of the string recived is greater than 3950 we will make a call to `Function3`, otherwise we break out of the for loop.
+1) Declare an array `GmonStatus` that has space for twelve characters and one null terminator.
+2) Check each character in the user input `RecvBuf` for a `/`, if one exists and the length of the string received is greater than 3950 we will make a call to `Function3`, otherwise we break out of the for loop.
 	* Since we pass the `RecvBuff` directly unlike in [`GTER`](https://github.com/DaintyJet/VChat_GTER_EggHunter) which limits the buffer passed to 180 and [`TRUN`](https://github.com/DaintyJet/VChat_TURN) which limits the buffer passed to 300	in `GMON` the buffer is limited by the size of the `RecvBuf` which is 4096.
-3) Send a result back to the client, either after finding a `/` in `RecvBuf` or scanning through it's entrirety  
+3) Send a result back to the client, either after finding a `/` in `RecvBuf` or scanning through it's entirety  
 
 
 Function3 code:
@@ -408,17 +408,17 @@ void Function3(char* Input) {
 	strcpy(Buffer2S, Input);
 }
 ```
-1) Declare an arry of size 2000
+1) Declare an array of size 2000
 2) Copy the contents of `Input` which is `RecvBuf` into the array `Buffer2S`	
-	* The `Input` array can hold up to 4096 charicters, this is slightly over two times as much as what `Buffer2S` can hold.
+	* The `Input` array can hold up to 4096 characters, this is slightly over two times as much as what `Buffer2S` can hold.
 	* This is using `strcpy` which is bounded by the location of the null terminator `\0` in the source string. This means we are not bounded by the size of the destination string 
-	* During this copy an exception occurs in the program when the source `Input` is of sufficent size, this prevents us from overwriting the `EIP` register directly. However as the SEH chain is stored on the stack, we are able to control the EIP through the SEH addresses.
+	* During this copy an exception occurs in the program when the source `Input` is of sufficient size, this prevents us from overwriting the `EIP` register directly. However as the SEH chain is stored on the stack, we are able to control the EIP through the SEH addresses.
 
 ## Test code
-1. [exploit0.py](./SourceCode/exploit0.py): Inital overflow to find 
+1. [exploit0.py](./SourceCode/exploit0.py): Initial overflow to find 
 2. [exploit1.py](./SourceCode/exploit1.py): Sending a cyclic pattern of chars to identify the offset that we need to inject to control EIP.
 3. [exploit2.py](./SourceCode/exploit2.py): Verify location of the SEH Handle 
-4. [exploit3.py](./SourceCode/exploit3.py): Jumping to *POP EAX, POPEDX, RTEN* 
+4. [exploit3.py](./SourceCode/exploit3.py): Jumping to *POP EAX, POP EDX, RETN* 
 4. [exploit4.py](./SourceCode/exploit4.py): Adding *JMP SHORT* 
 6. [exploit5.py](./SourceCode/exploit5.py): Adding a long *JMP* instruction for jumping to the start of the buffer. 
 7. [exploit6.py](./SourceCode/exploit6.py): Adding reverse shell code.
