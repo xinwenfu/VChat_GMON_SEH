@@ -57,7 +57,7 @@ The following sections cover the process that should (Or may) be followed when p
 		# Create a the DLL with an 
 		$ gcc.exe -shared -o essfunc.dll -Wl,--out-implib=libessfunc.a -Wl,--image-base=0x62500000 essfunc.o
 		```
-         * ```-shared -o essfunc.dll```: We create a DLL "essefunc.dll", these are equivalent to the [shared library](https://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html) in Linux. 
+         * ```-shared -o essfunc.dll```: We create a DLL "essfunc.dll", these are equivalent to the [shared library](https://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html) in Linux. 
          * ```-Wl,--out-implib=libessfunc.a```: We tell the linker to generate generate a import library "libessfunc".a" [2].
          * ```-Wl,--image-base=0x62500000```: We specify the [Base Address](https://learn.microsoft.com/en-us/cpp/build/reference/base-base-address?view=msvc-170) as ```0x62500000``` [3].
          * ```essfunc.o```: We build the DLL based off of the object file "essfunc.o"
@@ -67,9 +67,9 @@ The following sections cover the process that should (Or may) be followed when p
 		```
          * ```vchat.c```: The source file is "vchat.c"
          * ```-o vchat.exe```: The output file will be the executable "vchat.exe"
-         * ```-lws2_32 ./libessfunc.a```: Link the executable against the import library "libessfunc.a", enabling it to use the DLL "essefunc.dll"
+         * ```-lws2_32 ./libessfunc.a```: Link the executable against the import library "libessfunc.a", enabling it to use the DLL "essfunc.dll"
    2. Launch the VChat application 
-		* Click on the Icon in File Explorer when it is in the same directory as the essefunc dll
+		* Click on the Icon in File Explorer when it is in the same directory as the essfunc dll
 2. **Linux**: Run NMap
 	```sh
 	# Replace the <IP> with the IP of the machine.
@@ -268,6 +268,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 	<img src="Images/I14.png" width=600>
 
       * We can see there are quite a number of options, any one of them should work. For the examples we will be using the address `62501B5E`
+	  * *Note*: If you do not see any output it may be hidden behind the one of the Immunity Debugger windows
 
 7. Use a program like [exploit3.py](./SourceCode/exploit3.py) to verify that this works.
    1. Click on the black button highlighted below, enter in the address we decided in the previous step
@@ -282,7 +283,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 		<img src="Images/I18.png" width=600>
 
-         * Notice that the SEH record's handler now points to an essefunc.dll address!
+         * Notice that the SEH record's handler now points to an essfunc.dll address!
 	4. Once the overflow occurs pass the exception using `Shift+F7` then click the *step into* button!
 
 		<img src="Images/I19a.png" width=600> 
