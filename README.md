@@ -1,4 +1,4 @@
-# VChat GMON Exploiting: Harnessing Structure Exception Handling
+# VChat GMON Exploit: Structure Exception Handling
 
 *Notice*: The following exploit, and its procedures are based on the original [Blog](https://fluidattacks.com/blog/vulnserver-gmon/)
 ___
