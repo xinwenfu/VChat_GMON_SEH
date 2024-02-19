@@ -5,6 +5,8 @@ ___
 
 Not all buffer overflows will be capable of overflowing the return address to modify the `eip` register in order to gain control of the flow of execution. So how do we account for this? When exploiting a Windows system we can use the [Structured Exception Handling](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170) (SEH) feature provided that allows for languages like C to have a common exception handling paradigm, the try-catch-finally block.
 
+
+**Notice**: Please setup the Windows and Linux systems as described in [SystemSetup](./SystemSetup/README.md)!
 ## SEH
 SEH is used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a systemcall due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers that can process an exception before it reaches the default handler. This entire process is thread specific, so it is possible for multiple threads within the same process to have different SEH changes to handle those exceptions unique to each executing thread. We can define a basic set of handler by using the try-catch-finally block as shown below.
 
@@ -42,8 +44,6 @@ As these entries are stored on the stack, if our overflow is positioned in such 
 
 ## Exploitation
 The following sections cover the process that should (Or may) be followed when preforming this exploitation on the VChat application. It should be noted, that the [**Dynamic Analysis**](#dynamic-analysis) section makes certain assumption primarily that we have access to the binary that may not be realistic however the enumeration and exploitation of generic Windows, and Linux servers in order to procure this falls out of the scope of this document. 
-
-**Notice**: Please setup the Windows and Linux systems as described in [SystemSetup](../00-SystemSetup/README.md)!
 
 ### PreExploitation
 1. **Windows**: Setup Vchat
