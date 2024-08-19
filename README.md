@@ -435,19 +435,32 @@ This exploit is similar to all the previous exploits except that an exception is
 
 |Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Space Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG) |  
 |-|-|-|-|-|-|-|-|
-|No Effect| | |X |X |X | X| X| X|
+|No Effect|X | | |X | | | X| X|
 |Partial Mitigation| | |X| | | | | |
 |Full Mitigation| |X| | | | | | | |
+---
+|Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Space Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG) |  
+|-|-|-|-|-|-|-|-|
+|No Effect|X | | | | |X | X| X|
+|Partial Mitigation| | |X| | | | | |
+|Full Mitigation| | | | X | | | | | |
+---
+|Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Space Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG) |  
+|-|-|-|-|-|-|-|-|
+|No Effect|X | | | | | X| X| X|
+|Partial Mitigation| | |X| | | | | |
+|Full Mitigation| | | | |X | | | | |
+
 ---
 |Mitigation Level|Defenses|
 |-|-|
 |No Effect|SafeSEH, SEHOP, Heap Integrity Validation, and Control Flow Guard (CFG)|
 |Partial Mitigation|Address Space Layout Randomization|
-|Full Mitigation|Buffer Security Checks (GS) ***or*** Data Execution Prevention (DEP)|
+|Full Mitigation| Data Execution Prevention (DEP) **or** SAFESEH **or** SEHOP|
 
 
 
-* `Defense: Buffer Security Check (GS)`: This mitigation strategy proves effective against stack based buffer overflows that overwrite the return address or arguments of a function. This is because the randomly generated security cookie is placed before the return address and it's integrity is validated before the return address is loaded into the `EIP` register. As the security cookie is placed before the return address in order for us to overflow the return address we would have to corrupt the security cookie allowing us to detect the overflow. As the SEH Record is contained deeper in the stack in order to overwrite it we would overwrite the security cookie. However as we do not return this mitigation is never verified.
+* `Defense: Buffer Security Check (GS)`: As this exploit utilizes the SEH exception handling mechanism, and does not perform a return the security cookies inserted on the stack are not verrified.
 * `Defense: Data Execution Prevention (DEP)`: This mitigation strategy proves effective against stack based buffer overflows that attempt to **directly execute** shellcode located on the stack as this would raise an exception.
 * `Defense: Address Space Layout Randomization (ASLR)`: This does not affect our exploit as we do not require the addresses of external libraries or the addresses of internal functions. The jumps that we preform as part of the exploit are *relative* and compute where the flow of execution is directed to based on the current location.
 * `Defense: SafeSEH`: This would prove effective as long as the SEH chain overflowed is contained in a module that has SAFESEH enabled as the handler in the SEH record would no longer point to an address contained in the SAFESEH table.
