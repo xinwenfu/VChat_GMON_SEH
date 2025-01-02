@@ -31,7 +31,7 @@ int main()
 * `__try`: If the code located within a **__try** block raises an exception (C++ or non-C++ Exception), if a paired **__except** block matches the raised exception it will be executed. Otherwise, the exception is propagated further down the chain.
 * `__except`: This is an exception handler. We may define the types of exceptions this block handles. When a paired **__try** block raises an exception, if it matches those defined for the **__except** block, it will be executed.
 
-Each SEH entry or *record* is stored on the stack of the currently executing thread in a linked list format. Each entry known as a `_EXCEPTION_REGISTRATION_RECORD` contains two pointers: one to the next entry in the SEH chain, and the other is a pointer to an exception handler. The system can tell if we have reached the default handler's entry when the *next* entry has the value `0xFFFFFFFF`. If no other handlers are found to process the raised exception while traversing the chain, the default handed will eventually be invoked. Below is the structure used to define a SEH entry: 
+Each SEH entry or *record* is stored on the stack of the currently executing thread in a linked list format. Each entry known as a `_EXCEPTION_REGISTRATION_RECORD` contains two pointers: one to the next entry in the SEH chain, and the other is a pointer to an exception handler. The system can tell if we have reached the default handler's entry when the *next* entry has the value `0xFFFFFFFF`. If no other handlers are found to process the raised exception while traversing the chain, the default handed will eventually be invoked. Below is the structure used to define a SEH entry:
 
 ```
 typedef struct _EXCEPTION_REGISTRATION_RECORD
@@ -41,19 +41,19 @@ typedef struct _EXCEPTION_REGISTRATION_RECORD
 } EXCEPTION_REGISTRATION_RECORD, *PEXCEPTION_REGISTRATION_RECORD; /* size: 0x0010 */
 ```
 > [!NOTE]
-> The annotated sizes are for a 64-bit system as the [referenced code](https://github.com/ntdiff/headers/blob/master/Win10_1507_TS1/x64/System32/hal.dll/Standalone/_EXCEPTION_REGISTRATION_RECORD.h) is pertaining to a 64-bit Windows-10 system, in a 32-bit system each pointer takes only 4-bytes rather than the 8-bytes a pointer in a 64-bit system would occupy. 
+> The annotated sizes are for a 64-bit system as the [referenced code](https://github.com/ntdiff/headers/blob/master/Win10_1507_TS1/x64/System32/hal.dll/Standalone/_EXCEPTION_REGISTRATION_RECORD.h) is pertaining to a 64-bit Windows-10 system, in a 32-bit system each pointer takes only 4-bytes rather than the 8-bytes a pointer in a 64-bit system would occupy.
 
-As these entries are stored on the stack, if our overflow is positioned in such a way, we can overflow the SEH entry on the stack. If we were to raise an exception, we could gain control of the process's execution flow even if we cannot successfully overflow the return address. 
+As these entries are stored on the stack, if our overflow is positioned in such a way, we can overflow the SEH entry on the stack. If we were to raise an exception, we could gain control of the process's execution flow even if we cannot successfully overflow the return address.
 
 > [!IMPORTANT]
-> We have additional details about SEH and the defenses Microsoft has implemented to prevent this exploitation in [VChat_SEH](https://github.com/DaintyJet/VChat_SEH/blob/main/README.md)
+> We have additional details about SEH and the defenses Microsoft has implemented to prevent this exploitation in [VChat_SEH](https://github.com/DaintyJet/VChat_SEH/blob/main/README.md).
 ## VChat Setup and Configuration
 This section covers the compilation process, and use of the VChat Server. We include instructions for both the original VChat code which was compiled with MinGW and GCC on Windows, and the newly modified code that can be compiled with the Visual Studio C++ compiler.
 
 ### Visual Studio
 1. Open the [Visual Studio project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/DLL/Essfun) for the *essfunc* DLL.
 2. Build the project, as this contains inline assembly the target DLL file must be compiled as a x86 DLL (32-bits).
-3. Copy the Resulting DLL from the *Debug* folder in the [Essfunc Project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/DLL/Essfun/Debug) into the *Debug* folder in the [VChat Project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/EXE/VChat/Debug)
+3. Copy the Resulting DLL from the *Debug* folder in the [Essfunc Project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/DLL/Essfun/Debug) into the *Debug* folder in the [VChat Project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/EXE/VChat/Debug).
 
 	<img src="Images/VS-Comp.png">
 
@@ -75,7 +75,7 @@ Compile VChat and its dependencies if they have not already been compiled. This 
       * ```-shared -o essfunc.dll```: We create a DLL "essfunc.dll", these are equivalent to the [shared library](https://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html) in Linux.
       * ```-Wl,--out-implib=libessfunc.a```: We tell the linker to generate an import library "libessfunc.a" [2].
       * ```-Wl,--image-base=0x62500000```: We specify the [Base Address](https://learn.microsoft.com/en-us/cpp/build/reference/base-base-address?view=msvc-170) as ```0x62500000``` [3].
-      * ```essfunc.o```: We build the DLL based off of the object file "essfunc.o"
+      * ```essfunc.o```: We build the DLL based off of the object file "essfunc.o".
 3. Compile the VChat application.
 	```powershell
 	# Compile and Link VChat
@@ -91,9 +91,9 @@ The following sections cover the process that should (Or may) be followed when p
 ### Information Collecting
 We want to understand the VChat program and how it works in order to effectively exploit it. Before diving into the specific of how VChat behaves the most important information for us is the IP address of the Windows VM that runs VChat and the port number that VChat runs on.
 
-1. **Windows** Launch the VChat application. 
+1. **Windows** Launch the VChat application.
 	* Click on the Icon in File Explorer when it is in the same directory as the essfunc DLL.
-2. (Optional) **Linux**: Run NMap
+2. (Optional) **Linux**: Run NMap.
 	```sh
 	# Replace the <IP> with the IP of the machine.
 	$ nmap -A <IP>
@@ -112,7 +112,7 @@ We want to understand the VChat program and how it works in order to effectively
 	# telnet 127.0.0.1 9999
 	```
    * Once you have connected, try running the ```HELP``` command. This will give us some information regarding the available commands the server processes and the arguments they take. This provides us with a starting point for our [*fuzzing*](https://owasp.org/www-community/Fuzzing) work.
-   * Exit with ```CTL+]```
+   * Exit with ```CTL+]```.
    * An example is shown below.
 
 		![Telnet](Images/Telnet.png)
@@ -137,26 +137,26 @@ This phase of exploitation involves launching the target application's binary or
 
 	<img src="Images/I1b.png" width = 200>
 
-2. Ensure Immunity Debugger will intercept exceptions raised by the process
-   1. Open the debugging options as shown below
+2. Ensure Immunity Debugger will intercept exceptions raised by the process.
+   1. Open the debugging options as shown below.
 
 	   <img src="Images/I1c.png" width = 200>
 
-   2. Open the Exception Options; if nothing is showing, select any other tab and then re-select Exceptions 
+   2. Open the Exception Options; if nothing is showing, select any other tab and then re-select Exceptions.
 
 	   <img src="Images/I1d.png" width = 200>
 
-   3. Ensure we uncheck all boxes
+   3. Ensure we uncheck all boxes.
 
 	   <img src="Images/I1e.png" width = 200>
 
 3. Attach VChat: There are two options!
-   1. (Optional) When the VChat is already Running
-        1. Click File -> Attach
+   1. (Optional) When the VChat is already Running.
+        1. Click File -> Attach.
 
 			<img src="Images/I2a.png" width=200>
 
-		2. Select VChat
+		2. Select VChat.
 
 			<img src="Images/I2b.png" width=500>
 
@@ -165,18 +165,19 @@ This phase of exploitation involves launching the target application's binary or
 
 			<img src="Images/I3-1.png" width=800>
 
-        2. Click "Debug -> Run"
+        2. Click Debug -> Run.
 
 			<img src="Images/I3-2.png" width=800>
 
         3. Notice that a Terminal was opened when you clicked "Open". Now you should see the program output in the newly opened terminal.
 
 			<img src="Images/I3-3.png" width=800>
+
 4. Ensure that the execution is not paused; click the red arrow (Top Left)
 
 	<img src="Images/I3-4.png" width=800>
 
-#### Examining SEH
+#### Examining SEH Chains
 1. Launch Immunity Debugger and attach VChat to it.
 2. Use Immunity Debugger to view the SEH Chain: Click View and select SEH chain as shown below.
 
@@ -184,7 +185,7 @@ This phase of exploitation involves launching the target application's binary or
 
    * This information is discovered by looking at the Processes Thread Environment Block (TEB).
 
-3. Examine the SEH chain of the program
+3. Examine the SEH chain of the program.
 
    <img src="Images/S2.png" width=800>
 
@@ -226,7 +227,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 	<img src="Images/I4.png" width=600>
 
 	* Notice that the VChat appears to have crashed after our second message! We can see that the SPIKE script continues to run for some additional iterations before it fails to connect to the VChat's TCP socket, however this is long after the server started to fail connections.
-6. We can also compare the Register values before and after the fuzzing in Immunity Debugger; notice that the EIP register has not changed! 
+6. We can also compare the Register values before and after the fuzzing in Immunity Debugger; notice that the EIP register has not changed!
 	* Before:
 
 		<img src="Images/I7.png" width=600>
@@ -260,18 +261,18 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	<img src="Images/I9.png" width=600>
 
-3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can, in this case, see that the SEH record's handler was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on our search string's position in the pattern we sent to VChat. 
+3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can, in this case, see that the SEH record's handler was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on our search string's position in the pattern we sent to VChat.
 	```
 	$ /usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -q 386D4537
 	```
 	* This will return an offset as shown below. In this case, the offset is `3503`.
 
-	<img src="Images/I10.png" width=600> 
+	<img src="Images/I10.png" width=600>
 
 4. Now we can modify the exploit program to reflect the program [exploit2.py](./SourceCode/exploit2.py), and run the resulting exploit against VChat. If this is successful, we will have the SEH Record overflow and modify the handler's pointer to a series of `B`s. This allows us to crash the program when the overflow occurs and see if the register contains all `B`s; as that tells us we have successfully aligned our overflow.
    * We do this to validate that we have the correct offset for the SEH record!
 
-		<img src="Images/I11.png" width=600> 
+		<img src="Images/I11.png" width=600>
 
 		* See that the SEH handler is a series of the value `42` that is a series of Bs. This tells us that we can write an address to that location in order to change the control flow of the program when an exception occurs.
 		* Note: Sometimes, it took a few runs for this to work and update on the Immunity debugger.
@@ -311,13 +312,13 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
          * Notice that the SEH record's handler now points to an essfunc.dll address!
 	4. Once the overflow occurs pass the exception using `Shift+F7` then click the *step into* button!
 
-		<img src="Images/I19a.png" width=600> 
+		<img src="Images/I19a.png" width=600>
 
          * This is what we will see **before** the exception is passed.
 
-		<img src="Images/I19b.png" width=600> 
+		<img src="Images/I19b.png" width=600>
 
-         * This is what we will see once we have passed the exception, as we will have hit the breakpoint! 
+         * This is what we will see once we have passed the exception, as we will have hit the breakpoint!
 
 	5. Notice that we jumped to the stack that we just overflowed!
 
@@ -331,7 +332,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 9. Now, we want to perform a Short Jump to avoid overwriting the SEH block. A short jump instruction is only 2 bytes and should give us enough space to perform a long jump to the start of the buffer. We should use the tool `/usr/share/metasploit-framework/tools/exploit/nasm_shell.rb` to generate the machine code for this.
    * Run `nasm_shell.rb`. *Note* that it's path may differ on different machines!
-   * enter `jmp short +0xa` to perform a short jump of 10 bytes. 
+   * enter `jmp short +0xa` to perform a short jump of 10 bytes.
 
 	<img src="Images/I22.png" width=600>
 
@@ -371,6 +372,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
       <img src="Images/I29.png" width=600>
 
 Now that we have all the necessary parts for the creation of an exploit, we will add the shellcode to our payload and gain access to a reverse shell!
+
 ### Exploitation
 Up until this point in time,  we have been performing [Denial of Service](https://attack.mitre.org/techniques/T0814/) (DoS) attacks. Since we simply overflowed the stack with what is effectively garbage address values (a series of `A`s, `B`s, and `C`s), all we have done with our exploits is crash the VChat server directly or indirectly after our jump instructions lead to an invalid operation. Now, we have all the information necessary to control the flow of VChat's execution, allowing us to inject [Shellcode](https://www.sentinelone.com/blog/malicious-input-how-hackers-use-shellcode/) and perform a more meaningful attack.
 
@@ -425,15 +427,15 @@ The mitigations we will be using in the following examination are:
 * [Buffer Security Check (GS)](https://github.com/DaintyJet/VChat_Security_Cookies): Security Cookies are inserted on the stack to detect when critical data such as the base pointer, return address or arguments have been overflowed. Integrity is checked on function return.
 * [Data Execution Prevention (DEP)](https://github.com/DaintyJet/VChat_DEP_Intro): Uses paged memory protection to mark all non-code (.text) sections as non-executable. This prevents shellcode on the stack or heap from being executed as an exception will be raised.
 * [Address Space Layout Randomization (ASLR)](https://github.com/DaintyJet/VChat_ASLR_Intro): This mitigation makes it harder to locate where functions and datastructures are located as their region's starting address will be randomized. This is only done when the process is loaded, and if a DLL has ASLR enabled it will only have it's addresses randomized again when it is no longer in use and has been unloaded from memory.
-* [SafeSEH](https://github.com/DaintyJet/VChat_SEH): This is a protection for the Structured Exception Handing mechanism in Windows. It validates that the exception handler we would like to execute is contained in a table generated at compile time. 
+* [SafeSEH](https://github.com/DaintyJet/VChat_SEH): This is a protection for the Structured Exception Handing mechanism in Windows. It validates that the exception handler we would like to execute is contained in a table generated at compile time.
 * [SEHOP](https://github.com/DaintyJet/VChat_SEH): This is a protection for the Structured Exception Handing mechanism in Windows. It validates the integrity of the SEH chain during a runtime check.
-* [Control Flow Guard (CFG)](https://github.com/DaintyJet/VChat_CFG): This mitigation verifies that indirect calls or jumps are performed to locations contained in a table generated at compile time. Examples of indirect calls or jumps include function pointers being used to call a function, or if you are using `C++` virtual functions, which would be considered indirect calls as you index a table of function pointers. 
+* [Control Flow Guard (CFG)](https://github.com/DaintyJet/VChat_CFG): This mitigation verifies that indirect calls or jumps are performed to locations contained in a table generated at compile time. Examples of indirect calls or jumps include function pointers being used to call a function, or if you are using `C++` virtual functions, which would be considered indirect calls as you index a table of function pointers.
 * [Heap Integrity Validation](https://github.com/DaintyJet/VChat_Heap_Defense): This mitigation verifies the integrity of a heap when operations are performed on it, such as allocations or frees of heap objects.
 
-### Individual Defenses: VChat Exploit 
+### Individual Defenses: VChat Exploit
 This exploit is similar to all the previous exploits except that an exception is raised before the function can exit and return normally. This means the exception-handling mechanism is triggered due to some operation performed at runtime.
 
-|Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Space Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG) |  
+|Mitigation Level|Defense: Buffer Security Check (GS)|Defense: Data Execution Prevention (DEP)|Defense: Address Space Layout Randomization (ASLR) |Defense: SafeSEH| Defense: SEHOP | Defense: Heap Integrity Validation| Defense: Control Flow Guard (CFG) |
 |-|-|-|-|-|-|-|-|
 |No Effect| | |X |X |X | X| X| X|
 |Partial Mitigation| | |X| | | | | |
@@ -453,7 +455,7 @@ This exploit is similar to all the previous exploits except that an exception is
 * `Defense: SafeSEH`: This would prove effective as long as the SEH chain overflowed is contained in a module that has SAFESEH enabled, as the handler in the SEH record would no longer point to an address contained in the SAFESEH table.
 * `Defense: SEHOP`: This would prove effective as overflowing the SEH handler would overwrite the next pointer, breaking the SEH chain which means the SEHOP mitigation would be unable to verify the SEH chain by traversing from the start till the end.
 * `Defense: Heap Integrity Validation`: This does not affect our exploit as we do not leverage the Windows Heap.
-* `Defense: Control Flow Guard`: This does not affect our exploit as we do not leverage indirect calls or jumps. 
+* `Defense: Control Flow Guard`: This does not affect our exploit as we do not leverage indirect calls or jumps.
 > [!NOTE]
 > `Defense: Buffer Security Check (GS)`: If the application improperly initializes the global security cookie or contains additional vulnerabilities that can leak values on the stack, then this mitigation strategy can be bypassed.
 >

