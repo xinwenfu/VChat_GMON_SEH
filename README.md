@@ -31,7 +31,7 @@ int main()
 * `__try`: If the code located within a **__try** block raises an exception (C++ or non-C++ Exception), if a paired **__except** block matches the raised exception it will be executed. Otherwise, the exception is propagated further down the chain.
 * `__except`: This is an exception handler. We may define the types of exceptions this block handles. When a paired **__try** block raises an exception, if it matches those defined for the **__except** block, it will be executed.
 
-Each SEH entry or *record* is stored on the stack of the currently executing thread in a linked list format. Each entry known as a `_EXCEPTION_REGISTRATION_RECORD` contains two pointers: one to the next entry in the SEH chain, and the other is a pointer to an exception handler. The system can tell if we have reached the default handler's entry when the *next* entry has the value `0xFFFFFFFF`. If no other handlers are found to process the raised exception while traversing the chain, the default handed will eventually be invoked. Below is the structure used to define a SEH entry:
+Each SEH entry or *record* is stored on the stack of the currently executing thread in a linked list format. Each entry known as a `_EXCEPTION_REGISTRATION_RECORD` contains two pointers: one to the next entry in the SEH chain, and the other is a pointer to an exception handler. The system can tell if we have reached the default handler's entry when the *next* entry has the value `0xFFFFFFFF`. If no other handlers are found to process the raised exception while traversing the chain, the default handler will eventually be invoked. Below is the structure used to define a SEH entry:
 
 ```
 typedef struct _EXCEPTION_REGISTRATION_RECORD
