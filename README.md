@@ -51,6 +51,8 @@ As these entries are stored on the stack, if our overflow is positioned in such 
 This section covers the compilation process, and use of the VChat Server. We include instructions for both the original VChat code which was compiled with MinGW and GCC on Windows, and the newly modified code that can be compiled with the Visual Studio C++ compiler.
 
 ### Visual Studio
+<details>
+
 1. Open the [Visual Studio project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/DLL/Essfun) for the *essfunc* DLL.
 2. Build the project, as this contains inline assembly the target DLL file must be compiled as a x86 DLL (32-bits).
 3. Copy the Resulting DLL from the *Debug* folder in the [Essfunc Project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/DLL/Essfun/Debug) into the *Debug* folder in the [VChat Project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/EXE/VChat/Debug).
@@ -59,7 +61,12 @@ This section covers the compilation process, and use of the VChat Server. We inc
 
 4. Open the [Visual Studio project](https://github.com/DaintyJet/vchat-fork/tree/main/Server/Visual%20Studio%20Projects/EXE/VChat) for the *VChat* EXE.
 5. Build the Project; our executable will be in the *Debug* folder. You can then launch the executable!
+
+</details>
+
 ### Mingw/GCC
+<details>
+
 Compile VChat and its dependencies if they have not already been compiled. This is done with mingw.
 
 1. Create the essfunc object File.
@@ -84,6 +91,8 @@ Compile VChat and its dependencies if they have not already been compiled. This 
       * ```vchat.c```: The source file is "vchat.c".
       * ```-o vchat.exe```: The output file will be the executable "vchat.exe".
       * ```-lws2_32 ./libessfunc.a```: Link the executable against the import library "libessfunc.a", enabling it to use the DLL "essfunc.dll".
+
+</details>
 
 ## Exploit Process
 The following sections cover the process that should (Or may) be followed when performing this exploitation on the VChat application. It should be noted that the [**Dynamic Analysis**](#dynamic-analysis) section makes certain assumptions, such as having access to the application binary that may not be realistic in cases where you are exploiting remote servers; however, the enumeration and exploitation of generic Windows, and Linux servers to get the binary from a remote server falls outside of the scope of this document.
