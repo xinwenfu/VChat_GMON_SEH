@@ -259,7 +259,7 @@ I do feel it is a bit hard to identify which string actually crashes VChat. It a
 
 	<img src="Images/exploit1-exception-ESP.png" width=600>
 
-      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00BCED88`; however, an address related to our buffer is stored as `00BCED90`, which means we need to traverse 8-bytes before we reach a segment of the stack we control. *Remember* this is a 32-bit program!
+      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00BCED88`; however, an address related to our buffer is stored at `00BCED90`. This is what the stack looks like when the SEH handler begins to run. We want to put code at 00BCED90 so that the code can run. How?
 
 6. We can use the fact that the extra 8 bytes is on the stack to our advantage and `pop` the extra data off into some register. The exact register does not matter, as we simply want to remove extra data from the stack. We can use `mona.py` to find a gadget that pops the two extra elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing the code we will inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in Immunity Debugger as shown below.
 
@@ -272,7 +272,7 @@ I do feel it is a bit hard to identify which string actually crashes VChat. It a
 
 	<img src="Images/exploit1-gadget.png" width=600>
 
-      * We can see there are quite several options; any one of them should work. For the examples, we will use the address `6250271B`.
+      * We can see there are quite several options; any one of them should work. For the examples, we will use the address `6250271B`, corresponding to **pop ebx # pop ebp # ret**. Therefore, **ret** will make the instruction at 00BCED90 run.
 	  * *Note*: If you do not see any output it may be hidden behind the one of the Immunity Debugger windows, you can open the `log` view.
 
 7. Modify the exploit to reflect the [exploit3.py](./SourceCode/exploit3.py) script to verify that this SEH overwrite works. We do this to ensure that the SEH gadget is called and we have removed the two elements from the stack. This allows us to continue the exploitation process.
@@ -361,7 +361,7 @@ Up until this point in time,  we have been performing [Denial of Service](https:
 
       <img src="Images/exploit1-exploit.png" width=600>
 
-**Summary**: the stack
+**Summary**: The tricky part is we use the address of a gadget (** pop ebx # pop ebp # ret **) to overwrite the SEH handler. The gadget will move ESP to a location where an address within our buffer is stored. **ret** will make the instruction (a short jmp) at that addres to run, which jumps to the location where our long jmp is stored. The long jmp jumps to the shellcode. Can we just replace the short jmp with the long jmp to our shellcode?
 ```
        |                                    |<-- High address
        |------------------------------------|
@@ -369,7 +369,7 @@ Up until this point in time,  we have been performing [Denial of Service](https:
 |      |------------------------------------|                                                |
 |      | Padding                            |                                                |
 |      |------------------------------------|                                                |
-|      | 0x6250271B (POP R32; POP R32; RETN | # 1. Overwriting SEH handler; RETN will run -  |
+|      | 0x6250271B (POP R32; POP R32; RETN)| # 1. Overwriting SEH handler; RETN will run -  |
 |      |------------------------------------|                                             |  |
 |      | b'\x90\x90'                        | # Padding                                   |  |
 |      |------------------------------------|                                             |  |
