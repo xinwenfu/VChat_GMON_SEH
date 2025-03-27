@@ -362,7 +362,7 @@ Up until this point in time,  we have been performing [Denial of Service](https:
       <img src="Images/exploit1-exploit.png" width=600>
 
 **Summary**: The tricky part is we use the address of a gadget (** pop ebx # pop ebp # ret **) to overwrite the SEH handler. The two pop instructions of the gadget move ESP to a location where an address within our buffer is stored. **ret** will make the instruction (a short jmp) at that addres to run, which jumps to the location where our long jmp is stored. The long jmp jumps to the shellcode. Can we just replace the short jmp with the long jmp to our shellcode?
-* No the short jmp cannot be replaced by the long jmp? Otherwise, it is more than 4 bytes and we cannot put the gadget address to the right location.
+* No, the short jmp cannot be replaced by the long jmp. Otherwise, it is more than 4 bytes and we cannot put the gadget address to the right location.
 ```
        |                                    |<-- High address
        |------------------------------------|
