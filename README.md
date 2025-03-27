@@ -257,7 +257,7 @@ I do feel it is a bit hard to identify which string actually crashes VChat. It a
 
 	<img src="Images/exploit1-exception-ESP.png" width=600>
 
-      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00BCED88`; however, an address related to our buffer is stored at `00BCED90`. This is what the stack looks like when the SEH handler begins to run. We want to put code at 00BCED90 so that the code can run. How?
+      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00BCED88`; however, an address pointing somewhere to our buffer is stored at `00BCED90`. This is what the stack looks like when the SEH handler begins to run. We want to put code at 00BCED90 so that the code can run. How?
 
 6. We can use the fact that the extra 8 bytes is on the stack to our advantage and `pop` the extra data off into some register. The exact register does not matter, as we simply want to remove extra data from the stack. We can use `mona.py` to find a gadget that pops the two extra elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing the code we will inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in Immunity Debugger as shown below.
 
