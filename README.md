@@ -369,7 +369,7 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 
 	   <img src="Images/I26.png" width=600>
 
-13. Modify the [exploit5.py] exploit script to have your new long `jmp` instruction, set a breakpoint at the `pop/pop/ret` SEH gadget and observe its behavior! We want to ensure we jump to the start of the buffer we have overflown.
+13. Modify the [exploit5.py](./SourceCode/exploit5.py) exploit script to have your new long `jmp` instruction, set a breakpoint at the `pop/pop/ret` SEH gadget and observe its behavior! We want to ensure we jump to the start of the buffer we have overflown.
 
    1. Observe the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
 
