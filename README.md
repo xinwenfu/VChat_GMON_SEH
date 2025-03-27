@@ -365,8 +365,8 @@ Up until this point in time,  we have been performing [Denial of Service](https:
 ```
        |                                    |<-- High address
        |------------------------------------|
------> | b'\xe9\x02\xf2\xff\xff'            | # 3. JMP to shellcode -------------------------
-|      |------------------------------------|                                                |
+       | b'\xe9\x02\xf2\xff\xff'            | # 3. JMP to shellcode -------------------------
+-----> |------------------------------------|                                                |
 |      | Padding                            |                                                |
 |      |------------------------------------|                                                |
 |      | 0x6250271B (POP R32; POP R32; RETN)| # 1. Overwriting SEH handler; RETN will run -  |
