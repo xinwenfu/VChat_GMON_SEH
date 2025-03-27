@@ -204,64 +204,35 @@ This phase of exploitation involves launching the target application's binary or
    * We can see there are two entries. We may want to keep an eye on these as we Fuzz the VChat server!
 
 #### Fuzzing
-SPIKE is a C based fuzzing tool that is commonly used by professionals, it is available in [kali linux](https://www.kali.org/tools/spike/). Here is [a tutorial](http://thegreycorner.com/2010/12/25/introduction-to-fuzzing-using-spike-to.html) of the SPIKE tool by vulnserver's author [Stephen Bradshaw](http://thegreycorner.com/) in addition to [other resources](https://samsclass.info/127/proj/p18-spike.htm) for guidance. The source code is still available on [GitHub](https://github.com/guilhermeferreira/spikepp/) and still maintained on [GitLab](https://gitlab.com/kalilinux/packages/spike).
+We use [boofuzz](https://boofuzz.readthedocs.io/en/stable/index.html) for fuzzing, in which methodologically generated random data is injected into the target. It is hoped that the random data will cause the target to perform erratically, for example, crash. If that happens, bugs are found in the target.
 
 1. Open a terminal on the **Kali Linux Machine**.
-2. Create a file ```GMON.spk``` file with your favorite text editor. We will be using a SPIKE script and interpreter rather than writing our own C based fuzzer. We will be using the [mousepad](https://github.com/codebrainz/mousepad) text editor in this walkthrough, though any editor may be used.
-	```sh
-	$ mousepad GMON.spk
-	```
-	* If you do not have a GUI environment, an editor like [nano](https://www.nano-editor.org/), [vim](https://www.vim.org/) or [emacs](https://www.gnu.org/software/emacs/) could be used.
-3. Define the FUZZER's parameters, we are using [SPIKE](https://www.kali.org/tools/spike/) with the ```generic_send_tcp``` interpreter for TCP based fuzzing.
 
-	```
-	s_readline();
-	s_string("GMON ");
-	s_string_variable("*");
-	```
-    * ```s_readline();```: Return the line from the server.
-    * ```s_string("GMON ");```: Specifies that we start each message with the *String* GTER.
-    * ```s_string_variable("*");```: This specifies a String that we will mutate over. We can set it to * to say "any", as we do in our case.
-4. Use the Spike Fuzzer as shown below.
-	```
-	$ generic_send_tcp <VChat-IP> <Port> <SPIKE-Script> <SKIPVAR> <SKIPSTR>
+Go into the boofuzz folder
+```
+┌──(kali㉿kali)-[~]
+└─$ cd ~/boofuzz
+```
 
-	# Example
-	# generic_send_tcp 10.0.2.13 9999 GMON.spk 0 0
-	```
-   * ```<VChat-IP>```: Replace this with the IP of the target machine.
-   * ```<Port>```: Replace this with the target port.
-	* ```<SPIKE-Script>```: Script to run through the interpreter.
-	* ```<SKIPVAR>```: Skip to the n'th **s_string_variable**, 0 -> (S - 1) where S is the number of variable blocks.
-	* ```<SKIPSTR>```: Skip to the n'th element in the array that is **s_string_variable**, they internally are an array of strings used to fuzz the target.
-5. Observe the results on VChat's terminal output.
+Start a boofuzz virtual environment so that it does not interfere with other Pyhting settings.
+```                                                                                                                                          
+┌──(kali㉿kali)-[~/boofuzz]
+└─$ source env/bin/activate
+                                                                                                                                          
+┌──(env)─(kali㉿kali)-[~/boofuzz]
+└─$ 
+```
 
-	<img src="Images/I4.png" width=600>
+2. Run the fuzzing script [boofuzzz_GMON.py](SourceCode/boofuzzz_GMON.py)
 
-	* Notice that the VChat appears to have crashed after our second message! We can see that the SPIKE script continues to run for some additional iterations before it fails to connect to the VChat's TCP socket, however this is long after the server started to fail connections.
-6. We can also compare the Register values before and after the fuzzing in Immunity Debugger; notice that the EIP register has not changed!
-	* Before:
+```
+python boofuzzz_GMON.py
+```
+*boofuzzz_GMON.py* works as follows: builds a connection to the target, creates a message template with some fixed fields and a fuzzable field that will change, and then begins to inject the random data case by case into the target. One test case refers to one random message injected into the target.
 
-		<img src="Images/I7.png" width=600>
+3. Eventually vchat will crash. Immunity Debugger gives the string that crashes vchat. Find the string in the fuzzing log file.
 
-	* After:
-
-		<img src="Images/I8.png" width=600> <!-- Did anything change? -->
-
-      * The best way to reproduce this is to use [exploit0.py](./SourceCode/exploit0.py).
-      * Notice that the EIP register is `77C06819` not `41414141` as we have seen previously!
-
-7. We can examine the messages SPIKE is sending by reviewing the [tcpdump](https://www.tcpdump.org/) or [wireshark](https://www.wireshark.org/docs/wsug_html/) output.
-
-	<img src="Images/I5.png" width=800>
-
-	* After capturing the packets, right-click a TCP stream and click follow! This allows us to see all of the output.
-
-		<img src="Images/I6.png" width=400>
-
-8. However, even though the return address does not change, we can see that there has been a change by observing the SEH records!
-
-	<img src="Images/I6b.png" width=400>
+I do feel it is a bit hard to identify which string actually crashes VChat. It appears even after VChat crashes, its port is still open, maybe because it takes time for the OS to clean the crashed VChat. In this case, it appears two test cases may crash VChat. Take a guess then and try!
 
 #### Further Analysis
 1. Generate a Cyclic Pattern. We do this so we can tell *where exactly* the SEH records are located on the stack. We can use the *Metasploit* script [pattern_create.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_create.rb) to generate this string. By analyzing the values stored in the SEH record's pointer, we can tell where in memory (the stack) a SEH record is stored.
@@ -271,13 +242,13 @@ SPIKE is a C based fuzzing tool that is commonly used by professionals, it is av
 	* This will allow us to inject and overwrite the pointer to the SEH handler with a new address at its location.
 2. Modify or create your exploit program to reflect the [exploit1.py](./SourceCode/exploit1.py) program to inject the cyclic pattern into the VChat program's stack and observe the SEH record's values.
 
-	<img src="Images/I9.png" width=600>
+	<img src="Images/exploit1-SEH-Records.png" width=600>
 
-3. Notice that the EIP register reads `77C06819` and remains unchanged, but we can, in this case, see that the SEH record's handler was overwritten with `386D4537`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on our search string's position in the pattern we sent to VChat.
+3. Notice that the EIP register reads `75CB1B39`, but we can, in this case, see that the SEH record's handler was overwritten with `70453070`. We can use the [pattern_offset.rb](https://github.com/rapid7/metasploit-framework/blob/master/tools/exploit/pattern_offset.rb) script to determine the address offset based on our search string's position in the pattern we sent to VChat.
 	```
-	$ /usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -q 386D4537
+	$ /usr/share/metasploit-framework/tools/exploit/pattern_offset.rb -q 70453070
 	```
-	* This will return an offset as shown below. In this case, the offset is `3503`.
+	* This will return an offset as shown below. In this case, the offset is `3571`.
 
 	<img src="Images/I10.png" width=600>
 
