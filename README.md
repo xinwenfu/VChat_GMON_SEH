@@ -391,19 +391,19 @@ Can we just replace the short jmp with the long jmp to our shellcode?
 
 * Below is what it looks like within Immunity Debugger when the exception just occurs and the handler begins to run.
 
-<img src="Images/ExceptionJustOccurs.png width=600>
+<img src="Images/ExceptionJustOccurs.png" width=600>
 
 * Below is what it looks like within Immunity Debugger after retn of the gadget is done.
 
-<img src="Images/GadgetRetnDone.png width=600>
+<img src="Images/GadgetRetnDone.png" width=600>
 
 * Below is what it looks like within Immunity Debugger just before shellcode runs.
 
-<img src="Images/JustBeforeShellcodeRunning.png width=600>
+<img src="Images/JustBeforeShellcodeRunning.png" width=600>
 
 * Below is what the buffer looks like within Immunity Debugger just before shellcode runs 
 
-<img src="Images/JustBeforeShellcodeRunning-Buffer.png width=600>
+<img src="Images/JustBeforeShellcodeRunning-Buffer.png" width=600>
 
 ## Attack Mitigation Table
 In this section we will discuss the effects a variety of defenses would have on *this specific attack* on the VChat server, specifically we will be discussing their effects on a buffer overflow that overwrites a SEH record and attempts to execute shellcode that has been written to the stack. We will make a note that some mitigations may be bypassed if the target application contains additional vulnerabilities such as a [format string vulnerability](https://owasp.org/www-community/attacks/Format_string_attack), or by using more complex exploits like [Return Oriented Programming (ROP)](https://github.com/DaintyJet/VChat_TRUN_ROP).
