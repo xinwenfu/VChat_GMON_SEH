@@ -364,7 +364,7 @@ Up until this point in time,  we have been performing [Denial of Service](https:
 
       <img src="Images/exploit1-exploit.png" width=600>
 
-**Summary**: In this attack, we still use the buffer overflow attack. When the buffer overflow attack occurs, an exception occurs before the victim functions returns. Our strategy is to use the buffer overflow attack to overwrite the first SEH handler so that when the exception occurs, our fake SEH handler gets running. 
+**Summary**: In this attack, we still use the buffer overflow attack. When the buffer overflow attack occurs, an exception occurs before the victim function returns. Our strategy is to use the buffer overflow attack to overwrite the first SEH handler so that when the exception occurs, our fake SEH handler gets running. 
 
 The tricky part is we use the address of a gadget (** pop ebx # pop ebp # ret **) to overwrite the SEH handler.
 Therefore, when the exception occurs, the gadget runs. At this point, we don't know where ESP points. But from debugging, an address pointing **somewhere** in our buffer is stored 8 bytes above ESP. Therefore the gadget performs two pops and one retn. The retn allows us to run the instruction stored at **somewhere** in our buffer, where the instruction (a short jmp) is stored. The short jmp jumps to the location where our long jmp is stored. The long jmp jumps to the shellcode. 
